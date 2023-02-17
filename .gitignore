@@ -1,0 +1,5 @@
+# Python dust
+*.pyc
+
+# Configuration files
+.idea/
