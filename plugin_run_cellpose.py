@@ -16,7 +16,7 @@ from organoid_tracker.util.run_script_creator import create_run_script
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Segmentation-Segment nuclei using CellPose...": lambda: _create_segmentation_script(window)
+        "Segmentation//Segment-Segment nuclei using CellPose...": lambda: _create_segmentation_script(window)
     }
 
 
@@ -119,7 +119,7 @@ def _run_segmentation(args: List[str]):
         output_folder = parsed_config.output_folder.format(experiment_number = i + 1, experiment_name = experiment.name.get_save_name())
         os.makedirs(output_folder, exist_ok=True)
 
-        print(f"Working on experiment \"{experiment.name}\"...")
+        print(f"\nWorking on experiment \"{experiment.name}\"...")
         print("  ", end="")
         for time_point in experiment.images.time_points():
             print(time_point.time_point_number(), end=" ", flush=True)
