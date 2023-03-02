@@ -10,6 +10,7 @@ from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.images import Image
+from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
 from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.core.resolution import ImageResolution
@@ -17,6 +18,16 @@ from organoid_tracker.gui import dialog, action
 from organoid_tracker.gui.gui_experiment import GuiExperiment, SingleGuiTab
 from organoid_tracker.gui.threading import Task
 from organoid_tracker.gui.window import Window
+from organoid_tracker.util.moving_average import MovingAverage
+
+_EXTRACTED_PARAMETERS = [
+    "volume_um3",
+    "solidity",
+    "surface_um2",
+    "neighbor_distance_mean_um",
+    "neighbor_distance_variation"
+]
+_AVERAGING_H = 2
 
 
 def get_menu_items(window: Window):
@@ -27,7 +38,7 @@ def get_menu_items(window: Window):
 
 def _extract_segmentation_parameters(window: Window):
     if not dialog.popup_message_cancellable("Incorporate segmentation", f"Please make sure that you have the channel"
-        f" with the segmentation masks selected (so not the nuclear fluorescence)."):
+                                                                        f" with the segmentation masks selected (so not the nuclear fluorescence)."):
         return
 
     # Start!
@@ -36,26 +47,27 @@ def _extract_segmentation_parameters(window: Window):
 
 
 class _AnalyzeShapesTask(Task):
-
     _open_tabs: List[SingleGuiTab]
     _experiment_copies: List[Experiment]
     _segmentation_channel: ImageChannel
 
     def __init__(self, open_tabs: List[SingleGuiTab], segmentation_channel: ImageChannel):
         self._open_tabs = open_tabs
-        self._experiment_copies = [open_tab.experiment.copy_selected(positions=True, links=True, connections=True, images=True)
-                                   for open_tab in open_tabs]
+        self._experiment_copies = [
+            open_tab.experiment.copy_selected(positions=True, links=True, connections=True, images=True)
+            for open_tab in open_tabs]
         self._segmentation_channel = segmentation_channel
 
     def compute(self) -> List[PositionData]:
-        return [_analyze_shapes(experiment_copy, self._segmentation_channel) for experiment_copy in self._experiment_copies]
+        return [_analyze_shapes(experiment_copy, self._segmentation_channel) for experiment_copy in
+                self._experiment_copies]
 
     def on_finished(self, results: List[PositionData]):
         for open_tab, result in zip(self._open_tabs, results):
             position_data = open_tab.experiment.position_data
             # Remove old data
             for data_name in ["volume_um3", "hole_volume_um3", "solidity", "surface_um2", "surface_to_volume_ratio",
-                              "label", "neighbor_distance_median_um", "neighbor_distance_variation"]:
+                              "label", "sphericity", "neighbor_distance_median_um", "neighbor_distance_mad_um"]:
                 position_data.delete_data_with_name(data_name)
 
             open_tab.experiment.position_data.merge_data(result)
@@ -89,7 +101,36 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel) 
         # Second pass: characterize the environment
         _measure_neighborhood(positions_by_label, regionprops_by_label, resolution, results)
 
+    # Average all values
+    print("Averaging values over time...")
+    for track in experiment.links.find_all_tracks():
+        _average_track(experiment, track, results)
+
     return results
+
+
+def _average_track(experiment: Experiment, track: LinkingTrack, results: PositionData):
+    resolution = experiment.images.resolution()
+
+    for data_name in _EXTRACTED_PARAMETERS:
+        # Record all values
+        times_h = list()
+        values = list()
+        for position in track.positions():
+            value = results.get_position_data(position, data_name)
+            if value is None:
+                continue
+            times_h.append(position.time_point_number() * resolution.time_point_interval_h)
+            values.append(value)
+        if len(values) < 3:
+            continue
+
+        # Store the averaged values
+        average = MovingAverage(times_h, values, window_width=_AVERAGING_H,
+                                x_step_size=resolution.time_point_interval_h)
+        for position in track.positions():
+            value = average.get_mean_at(position.time_point_number() * resolution.time_point_interval_h)
+            results.set_position_data(position, data_name, value)
 
 
 def _measure_neighborhood(positions_by_label: Dict[int, Position],
@@ -110,14 +151,17 @@ def _measure_neighborhood(positions_by_label: Dict[int, Position],
         position_zyx_um = numpy.array([position.z, position.y, position.x], dtype=numpy.float32) * resolution_zyx_um
         distance_matrix = other_positions_table - position_zyx_um
         distance_matrix = numpy.sum(distance_matrix ** 2, axis=1)
-        closest_distances_um = distance_matrix[numpy.argpartition(distance_matrix, 8)[2:8]] ** 0.5
-        # We ignore the clostest distance, since that is the position itself
-        # So closest distance 1:7 should represent the distance to the neighbors
-        neighbor_distance_median_um = float(numpy.median(closest_distances_um))
-        neighbor_distance_min_um = float(numpy.min(closest_distances_um))
 
+        # Find the nearby positions
+        closest_distances_um = distance_matrix[numpy.argpartition(distance_matrix, 7)[0:7]] ** 0.5
+
+        # We ignore the closest distance, since that is the position itself
+        closest_distances_um = numpy.delete(closest_distances_um, numpy.argmin(closest_distances_um))
+
+        neighbor_distance_median_um = float(numpy.median(closest_distances_um))
+        neighbor_distance_mad_um = float(numpy.median(numpy.abs(closest_distances_um - neighbor_distance_median_um)))
         results.set_position_data(position, "neighbor_distance_median_um", neighbor_distance_median_um)
-        results.set_position_data(position, "neighbor_distance_min_um", neighbor_distance_min_um)
+        results.set_position_data(position, "neighbor_distance_variation", neighbor_distance_mad_um / neighbor_distance_median_um)
 
 
 def _measure_shape(positions_by_label: Dict[int, Position],
@@ -133,7 +177,7 @@ def _measure_shape(positions_by_label: Dict[int, Position],
             continue
 
         padded = numpy.pad(properties.image_filled, 2, mode='constant', constant_values=0)
-        padded = scipy.ndimage.binary_opening(padded, structure = numpy.ones((3, 5, 5)))
+        padded = scipy.ndimage.binary_opening(padded, structure=numpy.ones((3, 5, 5)))
         volume_um3 = float(numpy.sum(padded) * pixel_volume_um3)
         if volume_um3 == 0:
             continue  # Nothing was left after opening
@@ -143,16 +187,14 @@ def _measure_shape(positions_by_label: Dict[int, Position],
 
         vertices, faces, _, _ = skimage.measure.marching_cubes(padded, level=.5,
                                                                spacing=(
-                                                               resolution.pixel_size_z_um, resolution.pixel_size_y_um,
-                                                               resolution.pixel_size_x_um))
+                                                                   resolution.pixel_size_z_um,
+                                                                   resolution.pixel_size_y_um,
+                                                                   resolution.pixel_size_x_um))
         surface_um2 = float(skimage.measure.mesh_surface_area(vertices, faces))
 
-        sphericity = math.pi ** (1/3) * (6 * volume_um3) ** (2/3) / surface_um2
         results.set_position_data(position, "volume_um3", volume_um3)
         results.set_position_data(position, "solidity", solidity)
         results.set_position_data(position, "surface_um2", surface_um2)
-        results.set_position_data(position, "sphericity", sphericity)
-        results.set_position_data(position, "label", int(label))
 
 
 def _get_positions_by_label(experiment: Experiment, time_point: TimePoint, segmented_image: Image):
@@ -169,5 +211,3 @@ def _get_positions_by_label(experiment: Experiment, time_point: TimePoint, segme
             continue
         positions_by_label[label] = position
     return positions_by_label
-
-
