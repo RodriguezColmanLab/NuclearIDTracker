@@ -1,11 +1,12 @@
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy
 import scipy.ndimage
 import skimage.measure
 import skimage.morphology
 import skimage.segmentation
+from numpy import ndarray
 
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
@@ -31,7 +32,11 @@ _EXTRACTED_PARAMETERS = [
     "intensity_factor",
     "intensity_factor_local",
     "ellipticity",
-    "organoid_relative_z_um"
+    "organoid_relative_z_um",
+    "extent",
+    "minor_axis_length_um",
+    "intermediate_axis_length_um",
+    "major_axis_length_um"
 ]
 _AVERAGING_H = 2
 
@@ -157,6 +162,7 @@ def _measure_neighborhood(positions_by_label: Dict[int, Position],
     resolution_zyx_um = numpy.array(resolution.pixel_size_zyx_um, dtype=numpy.float32)
 
     # Construct table of *all* positions (including of regions that were segmented, but that we did not track)
+    # store some properties
     other_positions_table = numpy.empty((len(properties_by_label), 4), dtype=numpy.float32)
     for i, properties in enumerate(properties_by_label.values()):
         other_positions_table[i, 0:3] = properties.centroid * resolution_zyx_um
@@ -187,6 +193,21 @@ def _measure_neighborhood(positions_by_label: Dict[int, Position],
         results.set_position_data(position, "neighbor_distance_variation",
                                   neighbor_distance_mad_um / neighbor_distance_median_um)
         results.set_position_data(position, "intensity_factor_local", own_intensity / nearby_intensities)
+
+
+def _ellipsoid_axis_lengths(central_moments: ndarray) -> Tuple[float, ...]:
+    """Gets the maior, intermediate and minor axis length of the (3D) ellipsoid."""
+    m0 = central_moments[0, 0, 0]
+    sxx = central_moments[2, 0, 0] / m0
+    syy = central_moments[0, 2, 0] / m0
+    szz = central_moments[0, 0, 2] / m0
+    sxy = central_moments[1, 1, 0] / m0
+    sxz = central_moments[1, 0, 1] / m0
+    syz = central_moments[0, 1, 1] / m0
+    S = numpy.asarray([[sxx, sxy, sxz], [sxy, syy, syz], [sxz, syz, szz]])
+    # determine eigenvalues in descending order
+    eigvals = numpy.sort(numpy.linalg.eigvalsh(S))[::-1]
+    return tuple([math.sqrt(20.0 * e) for e in eigvals])
 
 
 def _measure_shape(positions_by_label: Dict[int, Position],
@@ -223,7 +244,11 @@ def _measure_shape(positions_by_label: Dict[int, Position],
         distances = scipy.spatial.distance.pdist(vertices, 'sqeuclidean')
         feret_diameter_max_um = math.sqrt(numpy.max(distances))
         intensity_factor = float(properties.intensity_mean / median_intensity)
-        ellipticity = float((properties.axis_major_length - properties.axis_minor_length) / properties.axis_major_length)
+
+        axis_major_length, axis_intermediate_length, axis_minor_length = _ellipsoid_axis_lengths(
+            properties.moments_central)
+
+        ellipticity = float((axis_major_length - axis_minor_length) / axis_major_length)
         organoid_relative_z_um = (position.z - lowest_z) * resolution.pixel_size_z_um
 
         results.set_position_data(position, "volume_um3", volume_um3)
@@ -233,6 +258,13 @@ def _measure_shape(positions_by_label: Dict[int, Position],
         results.set_position_data(position, "intensity_factor", intensity_factor)
         results.set_position_data(position, "ellipticity", ellipticity)
         results.set_position_data(position, "organoid_relative_z_um", organoid_relative_z_um)
+        results.set_position_data(position, "extent", float(properties.extent))
+        results.set_position_data(position, "minor_axis_length_um",
+                                  float(axis_minor_length * resolution.pixel_size_x_um))
+        results.set_position_data(position, "intermediate_axis_length_um",
+                                  float(axis_intermediate_length * resolution.pixel_size_x_um))
+        results.set_position_data(position, "major_axis_length_um",
+                                  float(axis_major_length * resolution.pixel_size_x_um))
 
 
 def _get_positions_by_label(experiment: Experiment, time_point: TimePoint, segmented_image: Image):
