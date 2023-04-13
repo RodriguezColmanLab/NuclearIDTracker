@@ -1,4 +1,5 @@
 import math
+from enum import Enum, auto
 from typing import Any, Dict, List, Tuple
 
 import numpy
@@ -22,23 +23,102 @@ from organoid_tracker.gui.threading import Task
 from organoid_tracker.gui.window import Window
 from organoid_tracker.util.moving_average import MovingAverage
 
-_EXTRACTED_PARAMETERS = [
-    "volume_um3",
-    "solidity",
-    "surface_um2",
-    "neighbor_distance_mean_um",
-    "neighbor_distance_variation",
-    "feret_diameter_max_um",
-    "intensity_factor",
-    "intensity_factor_local",
-    "ellipticity",
-    "organoid_relative_z_um",
-    "extent",
-    "minor_axis_length_um",
-    "intermediate_axis_length_um",
-    "major_axis_length_um"
-]
+
+class _SingleCellParam(Enum):
+    volume_um3 = auto()
+    solidity = auto()
+    surface_um2 = auto()
+    feret_diameter_max_um = auto()
+    intensity_factor = auto()
+    ellipticity = auto()
+    organoid_relative_z_um = auto()
+    extent = auto()
+    minor_axis_length_um = auto()
+    intermediate_axis_length_um = auto()
+    major_axis_length_um = auto()
+
+
 _AVERAGING_H = 2
+
+
+def _get_all_keys() -> List[str]:
+    """Gets all keys that will get values during the metadata extraction process."""
+    keys = list()
+    for param in _SingleCellParam:
+        keys.append(param.name)
+        keys.append(param.name + "_local")
+    keys.append("neighbor_distance_mean_um")
+    keys.append("neighbor_distance_variation")
+    return keys
+
+
+class _OurProperties:
+    """Stores all properties that we use in one table."""
+
+    _values: ndarray
+    _positions_zyx_um: ndarray
+    _neighbor_distances_and_variation: ndarray
+    _relative_values: ndarray
+
+    _SENTINEL_VALUE = -999999  # Used if no position has been set
+
+    def __init__(self, label_count: int):
+        self._values = numpy.zeros((label_count + 1, len(_SingleCellParam)), dtype=numpy.float32)
+        self._positions_zyx_um = numpy.full((label_count + 1, 3), fill_value=self._SENTINEL_VALUE, dtype=numpy.float32)
+        self._neighbor_distances_and_variation = numpy.zeros((label_count + 1, 2), dtype=numpy.float32)
+        self._relative_values = numpy.zeros((label_count + 1, len(_SingleCellParam)), dtype=numpy.float32)
+
+    def add_position(self, label: int, x_um: float, y_um: float, z_um: float):
+        self._positions_zyx_um[label, 0] = x_um
+        self._positions_zyx_um[label, 1] = y_um
+        self._positions_zyx_um[label, 2] = z_um
+
+    def add(self, label: int, param: _SingleCellParam, value: float):
+        self._values[label, param.value - 1] = value
+
+    def get(self, label: int, param: _SingleCellParam) -> float:
+        return self._values[label, param.value - 1]
+
+    def store(self, label_to_position: Dict[int, Position], position_data: PositionData):
+        self._calculate_neighborhood()
+
+        for label, position in label_to_position.items():
+            position_data.set_position_data(position, "neighbor_distance_mean_um",
+                                            float(self._neighbor_distances_and_variation[label, 0]))
+            position_data.set_position_data(position, "neighbor_distance_variation",
+                                            float(self._neighbor_distances_and_variation[label, 1]))
+            for key in _SingleCellParam:
+                position_data.set_position_data(position, key.name, float(self._values[label, key.value - 1]))
+                position_data.set_position_data(position, key.name + "_local",
+                                                float(self._relative_values[label, key.value - 1]))
+
+    def _calculate_neighborhood(self):
+        for label, position_zyx_um in enumerate(self._positions_zyx_um):
+            if position_zyx_um[0] == self._SENTINEL_VALUE:
+                continue
+
+            distance_matrix = self._positions_zyx_um - position_zyx_um
+            distance_matrix = numpy.sum(distance_matrix ** 2, axis=1)
+
+            # Find the nearby positions
+            closest_positions_labels = numpy.argpartition(distance_matrix, 7)[0:7]
+            closest_distances_um = distance_matrix[closest_positions_labels] ** 0.5
+
+            # We ignore the closest distance, since that is the position itself
+            closest_i = int(numpy.argmin(closest_distances_um))
+            closest_label = closest_positions_labels[closest_i]
+            own_values = self._values[closest_label, :]
+            closest_distances_um = numpy.delete(closest_distances_um, closest_i)
+            neighbor_labels = numpy.delete(closest_positions_labels, closest_i)
+            neighbor_values = self._values[neighbor_labels, :]
+            relative_values = own_values / numpy.mean(neighbor_values, axis=0)
+
+            neighbor_distance_median_um = float(numpy.median(closest_distances_um))
+            neighbor_distance_mad_um = float(
+                numpy.median(numpy.abs(closest_distances_um - neighbor_distance_median_um)))
+
+            self._relative_values[label] = relative_values
+            self._neighbor_distances_and_variation[label] = neighbor_distance_median_um, neighbor_distance_mad_um
 
 
 def get_menu_items(window: Window):
@@ -49,7 +129,8 @@ def get_menu_items(window: Window):
 
 def _extract_segmentation_parameters(window: Window):
     if not dialog.popup_message_cancellable("Incorporate segmentation", f"Please make sure that you have the channel"
-                                                                        f" with the segmentation masks selected (so not the nuclear fluorescence)."):
+                                                                        f" with the segmentation masks selected (so not"
+                                                                        f" the nuclear fluorescence)."):
         return
 
     # Start!
@@ -77,8 +158,8 @@ class _AnalyzeShapesTask(Task):
         for open_tab, result in zip(self._open_tabs, results):
             position_data = open_tab.experiment.position_data
             # Remove old data
-            for data_name in _EXTRACTED_PARAMETERS:
-                position_data.delete_data_with_name(data_name)
+            for data_name in _SingleCellParam:
+                position_data.delete_data_with_name(data_name.name)
 
             open_tab.experiment.position_data.merge_data(result)
             open_tab.undo_redo.clear()
@@ -118,10 +199,8 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel) 
                 del positions_by_label[label]
 
         # First pass: characterize the shape of the nuclei
-        _measure_shape(positions_by_label, regionprops_by_label, resolution, results)
-
-        # Second pass: characterize the environment
-        _measure_neighborhood(positions_by_label, regionprops_by_label, resolution, results)
+        time_point_results = _measure_shape(regionprops_by_label, resolution)
+        time_point_results.store(positions_by_label, results)
 
     # Average all values
     print("Averaging values over time...")
@@ -134,7 +213,7 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel) 
 def _average_track(experiment: Experiment, track: LinkingTrack, results: PositionData):
     resolution = experiment.images.resolution()
 
-    for data_name in _EXTRACTED_PARAMETERS:
+    for data_name in _get_all_keys():
         # Record all values
         times_h = list()
         values = list()
@@ -152,47 +231,8 @@ def _average_track(experiment: Experiment, track: LinkingTrack, results: Positio
                                 x_step_size=resolution.time_point_interval_h)
         for position in track.positions():
             value = average.get_mean_at(position.time_point_number() * resolution.time_point_interval_h)
-            results.set_position_data(position, data_name, value)
-
-
-def _measure_neighborhood(positions_by_label: Dict[int, Position],
-                          properties_by_label: Dict[int, "skimage.measure._regionprops.RegionProperties"],
-                          resolution: ImageResolution, results: PositionData):
-    """Looks at the distances to nearby cells."""
-    resolution_zyx_um = numpy.array(resolution.pixel_size_zyx_um, dtype=numpy.float32)
-
-    # Construct table of *all* positions (including of regions that were segmented, but that we did not track)
-    # store some properties
-    other_positions_table = numpy.empty((len(properties_by_label), 4), dtype=numpy.float32)
-    for i, properties in enumerate(properties_by_label.values()):
-        other_positions_table[i, 0:3] = properties.centroid * resolution_zyx_um
-        other_positions_table[i, 3] = properties.intensity_mean
-
-    for position in positions_by_label.values():
-        if position.is_zero():
-            continue
-
-        position_zyx_um = numpy.array([position.z, position.y, position.x], dtype=numpy.float32) * resolution_zyx_um
-        distance_matrix = other_positions_table[:, 0:3] - position_zyx_um
-        distance_matrix = numpy.sum(distance_matrix ** 2, axis=1)
-
-        # Find the nearby positions
-        closest_positions_indices = numpy.argpartition(distance_matrix, 7)[0:7]
-        closest_distances_intensities = other_positions_table[closest_positions_indices, 3]
-        closest_distances_um = distance_matrix[closest_positions_indices] ** 0.5
-
-        # We ignore the closest distance, since that is the position itself
-        closest_index = numpy.argmin(closest_distances_um)
-        own_intensity = float(closest_distances_intensities[closest_index])
-        closest_distances_um = numpy.delete(closest_distances_um, closest_index)
-        nearby_intensities = float(numpy.mean(numpy.delete(closest_distances_intensities, closest_index)))
-
-        neighbor_distance_median_um = float(numpy.median(closest_distances_um))
-        neighbor_distance_mad_um = float(numpy.median(numpy.abs(closest_distances_um - neighbor_distance_median_um)))
-        results.set_position_data(position, "neighbor_distance_median_um", neighbor_distance_median_um)
-        results.set_position_data(position, "neighbor_distance_variation",
-                                  neighbor_distance_mad_um / neighbor_distance_median_um)
-        results.set_position_data(position, "intensity_factor_local", own_intensity / nearby_intensities)
+            if value is not None:
+                results.set_position_data(position, data_name, float(value))
 
 
 def _ellipsoid_axis_lengths(central_moments: ndarray) -> Tuple[float, ...]:
@@ -210,61 +250,60 @@ def _ellipsoid_axis_lengths(central_moments: ndarray) -> Tuple[float, ...]:
     return tuple([math.sqrt(20.0 * e) for e in eigvals])
 
 
-def _measure_shape(positions_by_label: Dict[int, Position],
-                   properties_by_label: Dict[int, "skimage.measure._regionprops.RegionProperties"],
-                   resolution: ImageResolution, results: PositionData):
+def _measure_shape(properties_by_label: Dict[int, "skimage.measure._regionprops.RegionProperties"],
+                   resolution: ImageResolution) -> _OurProperties:
     """Looks at the shape of a cell."""
-    if len(positions_by_label) == 0:
-        return
+    if len(properties_by_label) == 0:
+        return _OurProperties(0)
     pixel_volume_um3 = resolution.pixel_size_x_um * resolution.pixel_size_y_um * resolution.pixel_size_z_um
     median_intensity = numpy.median([properties.intensity_mean for properties in properties_by_label.values()])
-    lowest_z = min(position.z for position in positions_by_label.values())
+    lowest_z = min(properties.centroid[0] for properties in properties_by_label.values())
 
+    storage = _OurProperties(len(properties_by_label))
     for label, properties in properties_by_label.items():
-        position = positions_by_label.get(label)
-        if position is None or position.is_zero():
-            # Segmentation failed for this label
-            continue
-
         padded = numpy.pad(properties.image_filled, 2, mode='constant', constant_values=0)
         padded = scipy.ndimage.binary_opening(padded, structure=numpy.ones((3, 5, 5)))
-        volume_um3 = float(numpy.sum(padded) * pixel_volume_um3)
+        volume_um3 = numpy.sum(padded) * pixel_volume_um3
         if volume_um3 == 0:
             continue  # Nothing was left after opening
 
         convex_hull_image = skimage.morphology.convex_hull_image(padded)
-        solidity = float(numpy.sum(padded) / numpy.sum(convex_hull_image))
+        solidity = numpy.sum(padded) / numpy.sum(convex_hull_image)
 
         vertices, faces, _, _ = skimage.measure.marching_cubes(padded, level=.5,
                                                                spacing=(
                                                                    resolution.pixel_size_z_um,
                                                                    resolution.pixel_size_y_um,
                                                                    resolution.pixel_size_x_um))
-        surface_um2 = float(skimage.measure.mesh_surface_area(vertices, faces))
+        surface_um2 = skimage.measure.mesh_surface_area(vertices, faces)
         distances = scipy.spatial.distance.pdist(vertices, 'sqeuclidean')
         feret_diameter_max_um = math.sqrt(numpy.max(distances))
-        intensity_factor = float(properties.intensity_mean / median_intensity)
+        intensity_factor = properties.intensity_mean / median_intensity
 
         axis_major_length, axis_intermediate_length, axis_minor_length = _ellipsoid_axis_lengths(
             properties.moments_central)
 
-        ellipticity = float((axis_major_length - axis_minor_length) / axis_major_length)
-        organoid_relative_z_um = (position.z - lowest_z) * resolution.pixel_size_z_um
+        ellipticity = (axis_major_length - axis_minor_length) / axis_major_length
+        organoid_relative_z_um = (properties.centroid[0] - lowest_z) * resolution.pixel_size_z_um
+        z, y, x = properties.centroid
 
-        results.set_position_data(position, "volume_um3", volume_um3)
-        results.set_position_data(position, "solidity", solidity)
-        results.set_position_data(position, "surface_um2", surface_um2)
-        results.set_position_data(position, "feret_diameter_max_um", feret_diameter_max_um)
-        results.set_position_data(position, "intensity_factor", intensity_factor)
-        results.set_position_data(position, "ellipticity", ellipticity)
-        results.set_position_data(position, "organoid_relative_z_um", organoid_relative_z_um)
-        results.set_position_data(position, "extent", float(properties.extent))
-        results.set_position_data(position, "minor_axis_length_um",
-                                  float(axis_minor_length * resolution.pixel_size_x_um))
-        results.set_position_data(position, "intermediate_axis_length_um",
-                                  float(axis_intermediate_length * resolution.pixel_size_x_um))
-        results.set_position_data(position, "major_axis_length_um",
-                                  float(axis_major_length * resolution.pixel_size_x_um))
+        storage.add_position(label, x * resolution.pixel_size_x_um, y * resolution.pixel_size_y_um,
+                             z * resolution.pixel_size_z_um)
+        storage.add(label, _SingleCellParam.solidity, numpy.sum(padded) / numpy.sum(convex_hull_image))
+        storage.add(label, _SingleCellParam.volume_um3, volume_um3)
+        storage.add(label, _SingleCellParam.solidity, solidity)
+        storage.add(label, _SingleCellParam.surface_um2, surface_um2)
+        storage.add(label, _SingleCellParam.feret_diameter_max_um, feret_diameter_max_um)
+        storage.add(label, _SingleCellParam.intensity_factor, intensity_factor)
+        storage.add(label, _SingleCellParam.ellipticity, ellipticity)
+        storage.add(label, _SingleCellParam.organoid_relative_z_um, organoid_relative_z_um)
+        storage.add(label, _SingleCellParam.extent, properties.extent)
+        storage.add(label, _SingleCellParam.minor_axis_length_um, axis_minor_length * resolution.pixel_size_x_um)
+        storage.add(label, _SingleCellParam.intermediate_axis_length_um,
+                    axis_intermediate_length * resolution.pixel_size_x_um)
+        storage.add(label, _SingleCellParam.major_axis_length_um, axis_major_length * resolution.pixel_size_x_um)
+
+    return storage
 
 
 def _get_positions_by_label(experiment: Experiment, time_point: TimePoint, segmented_image: Image):
