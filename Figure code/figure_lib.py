@@ -6,6 +6,23 @@ from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
 
 
+CELL_TYPE_PALETTE = {
+    "ENTEROCYTE": "#100069",
+    "ABSORPTIVE_PROGENY": "#0984e3",
+    "SECRETORY": "#74b9ff",
+    "ENTEROENDOCRINE": "#74b9ff",
+    "GOBLET": "#74b9ff",
+    "SECRETIVE_PROGENY": "#74b9ff",
+    "WGA_PLUS": "#74b9ff",
+    "PANETH": "#B60101",
+    "STEM": "#26CC3C",
+    "STEM_PUTATIVE": "#26CC3C",
+    "UNLABELED": "#eeeeee",
+    "TA": "#eeeeee",
+    "NONE": "#eeeeee"
+}
+
+
 def standard_preprocess(adata: AnnData) -> AnnData:
     adata = adata[adata[:, 'volume_um3'].X > 100, :]
     adata = adata[adata[:, 'volume_um3'].X < 250, :]

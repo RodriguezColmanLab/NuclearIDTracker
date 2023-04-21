@@ -1,7 +1,7 @@
-import scanpy.preprocessing
 import scanpy.plotting
+import scanpy.preprocessing
 import scanpy.tools
-import matplotlib.pyplot as plt
+
 import figure_lib
 
 INPUT_FILE = "../../Data/all_data.h5ad"
