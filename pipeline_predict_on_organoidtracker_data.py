@@ -18,6 +18,9 @@ _OUTPUT_FOLDER = "../Data/Cell tracks with predicted types"
 
 
 def predict_organoid(experiment: Experiment):
+    # Delete existing cell types
+    experiment.position_data.delete_data_with_name("type")
+
     # Load the model
     model = lib_models.load_model(_MODEL_FOLDER)
     input_names = model.get_input_output().input_mapping
@@ -75,6 +78,7 @@ def _get_data_array(position_data: PositionData, position: Position, input_names
 def main():
     os.makedirs(_OUTPUT_FOLDER, exist_ok=True)
     for experiment in list_io.load_experiment_list_file(_INPUT_FILE):
+        print(f"Working on {experiment.name}...")
         predict_organoid(experiment)
         io.save_data_to_json(experiment, os.path.join(_OUTPUT_FOLDER, f"{experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
 
