@@ -15,11 +15,20 @@ from organoid_tracker.imaging import io, list_io
 import figure_lib
 from organoid_tracker.linking import nearby_position_finder
 
-_EXPERIMENT_NAME = "x20190926pos01"
 _LIST_FILE = "../../Data/Predicted data.autlist"
 
 _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)
+
+# Alternative image:
+# _EXPERIMENT_NAME = "x20200614pos002"
+# _Z = 4
+# _X_MIN = 200
+# _X_MAX = _X_MIN + 250
+# _Y_MIN = 20
+# _Y_MAX = _Y_MIN + 250
+# _TIME_POINT = TimePoint(347)
+_EXPERIMENT_NAME = "x20190926pos01"
 _Z = 6
 _X_MIN = 15
 _X_MAX = _X_MIN + 250
