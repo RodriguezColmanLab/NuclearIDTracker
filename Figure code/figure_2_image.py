@@ -5,6 +5,7 @@ import scipy
 from matplotlib import pyplot as plt
 from numpy import ndarray
 import skimage.segmentation
+import skimage.measure
 
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
@@ -12,18 +13,19 @@ from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import io, list_io
 import figure_lib
+from organoid_tracker.linking import nearby_position_finder
 
-_EXPERIMENT_NAME = "x20200614pos002"
+_EXPERIMENT_NAME = "x20190926pos01"
 _LIST_FILE = "../../Data/Predicted data.autlist"
 
 _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)
-_Z = 4
-_X_MIN = 200
+_Z = 6
+_X_MIN = 15
 _X_MAX = _X_MIN + 250
-_Y_MIN = 20
+_Y_MIN = 250
 _Y_MAX = _Y_MIN + 250
-_TIME_POINT = TimePoint(347)
+_TIME_POINT = TimePoint(330)
 
 
 def main():
@@ -48,9 +50,16 @@ def main():
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:
     """Gives the cell type probabilities of the position. If not found, then it checks whether they are there in the
     previous or next time point, and returns those."""
-    for search_position in [position,
-                            experiment.links.find_single_future(position),
-                            experiment.links.find_single_past(position)]:
+    probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
+    if probabilities is not None:
+        return probabilities
+
+    past_postiion = experiment.links.find_single_past(position)
+    future_position = experiment.links.find_single_future(position)
+    past_past_position = None if past_postiion is None else experiment.links.find_single_past(past_postiion)
+    future_future_position = None if future_position is None else experiment.links.find_single_future(future_position)
+
+    for search_position in [past_postiion, future_position, past_past_position, future_future_position]:
         if search_position is None:
             continue
         probabilities = experiment.position_data.get_position_data(search_position, "ct_probabilities")
@@ -60,42 +69,45 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
 
 
 def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint):
+    resolution = experiment.images.resolution()
     segmentation_image = experiment.images.get_image(time_point, _SEGMENTATION_CHANNEL)
 
-    offset_z = experiment.images.offsets.of_time_point(time_point).z
-    image_z = int(_Z - offset_z)
-    min_z = max(0, image_z - 3)
-    max_z = image_z + 3
+    offset = experiment.images.offsets.of_time_point(time_point)
+    image_z = int(_Z - offset.z)
+    min_z = max(0, image_z - 2)
+    max_z = image_z + 2
     mask_image = numpy.max(segmentation_image.array[min_z:max_z], axis=0)
     mask_image = skimage.segmentation.watershed(numpy.zeros_like(mask_image), markers=mask_image)
 
     colored_image = numpy.full(fill_value=0.4, shape=mask_image.shape + (3,), dtype=numpy.float32)
     cell_types = experiment.global_data.get_data("ct_probabilities")
 
-    for position in experiment.positions.of_time_point(time_point):
-        segmentation_id = segmentation_image.value_at(position)
-        if segmentation_id == 0:
-            continue
-
+    positions = list(experiment.positions.of_time_point(time_point))
+    for region in skimage.measure.regionprops(segmentation_image.array):
+        # We match each region to the closest detected position
+        centroid = Position(region.centroid[2], region.centroid[1], region.centroid[0], time_point=time_point) + offset
+        position = nearby_position_finder.find_closest_position(positions,
+                                                                around=centroid,
+                                                                resolution=resolution,
+                                                                max_distance_um=20)
         probabilities = _search_probabilities(experiment, position)
         if probabilities is None:
             continue
-        else:
-            color = numpy.array([probabilities[cell_types.index("PANETH")],
-                probabilities[cell_types.index("STEM")],
-                probabilities[cell_types.index("ENTEROCYTE")]])
-            color -= color.min()
-            color /= color.max()
 
-        # Red, Paneth cells
-        colored_image[..., 0][mask_image == segmentation_id] = color[0]
-        # Green, stem cells
-        colored_image[..., 1][mask_image == segmentation_id] = color[1]
-        # Blue, enterocytes
-        colored_image[..., 2][mask_image == segmentation_id] = color[2]
+        # Calculate the desired color
+        color = numpy.array([probabilities[cell_types.index("PANETH")],
+            probabilities[cell_types.index("STEM")],
+            probabilities[cell_types.index("ENTEROCYTE")]])
+
+        # Color the target image by the calculated color
+        for i in range(len(color)):
+            colored_image[..., i][mask_image == region.label] = color[i]
 
     # Blur the image, for smoother results
-    colored_image = scipy.ndimage.gaussian_filter(colored_image, 1)
+    for i in range(colored_image.shape[-1]):
+        colored_image[..., i] = scipy.ndimage.gaussian_filter(colored_image[..., i], 1)
+        colored_image[..., i] -= colored_image[..., i].min()
+        colored_image[..., i] /= colored_image[..., i].max()
 
     return colored_image
 
