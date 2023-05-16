@@ -48,6 +48,7 @@ def _get_all_keys() -> List[str]:
         keys.append(param.name)
         keys.append(param.name + "_local")
     keys.append("neighbor_distance_mean_um")
+    keys.append("neighbor_distance_median_um")
     keys.append("neighbor_distance_variation")
     return keys
 
@@ -65,7 +66,7 @@ class _OurProperties:
     def __init__(self, label_count: int):
         self._values = numpy.zeros((label_count + 1, len(_SingleCellParam)), dtype=numpy.float32)
         self._positions_zyx_um = numpy.full((label_count + 1, 3), fill_value=self._SENTINEL_VALUE, dtype=numpy.float32)
-        self._neighbor_distances_and_variation = numpy.zeros((label_count + 1, 2), dtype=numpy.float32)
+        self._neighbor_distances_and_variation = numpy.zeros((label_count + 1, 3), dtype=numpy.float32)
         self._relative_values = numpy.zeros((label_count + 1, len(_SingleCellParam)), dtype=numpy.float32)
 
     def add_position(self, label: int, x_um: float, y_um: float, z_um: float):
@@ -83,10 +84,12 @@ class _OurProperties:
         self._calculate_neighborhood()
 
         for label, position in label_to_position.items():
-            position_data.set_position_data(position, "neighbor_distance_mean_um",
+            position_data.set_position_data(position, "neighbor_distance_median_um",
                                             float(self._neighbor_distances_and_variation[label, 0]))
-            position_data.set_position_data(position, "neighbor_distance_variation",
+            position_data.set_position_data(position, "neighbor_distance_mean_um",
                                             float(self._neighbor_distances_and_variation[label, 1]))
+            position_data.set_position_data(position, "neighbor_distance_variation",
+                                            float(self._neighbor_distances_and_variation[label, 2]))
             for key in _SingleCellParam:
                 position_data.set_position_data(position, key.name, float(self._values[label, key.value - 1]))
                 position_data.set_position_data(position, key.name + "_local",
@@ -114,16 +117,17 @@ class _OurProperties:
             relative_values = own_values / numpy.mean(neighbor_values, axis=0)
 
             neighbor_distance_median_um = float(numpy.median(closest_distances_um))
+            neighbor_distance_mean_um = float(numpy.mean(closest_distances_um))
             neighbor_distance_mad_um = float(
                 numpy.median(numpy.abs(closest_distances_um - neighbor_distance_median_um)))
 
             self._relative_values[label] = relative_values
-            self._neighbor_distances_and_variation[label] = neighbor_distance_median_um, neighbor_distance_mad_um
+            self._neighbor_distances_and_variation[label] = neighbor_distance_median_um, neighbor_distance_mean_um, neighbor_distance_mad_um
 
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Process-Segmentation//Extract shape parameters...": lambda: _extract_segmentation_parameters(window)
+        "Tools//Process-Cell types//2. Extract shape parameters...": lambda: _extract_segmentation_parameters(window)
     }
 
 

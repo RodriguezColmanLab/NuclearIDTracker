@@ -16,7 +16,7 @@ from organoid_tracker.util.run_script_creator import create_run_script
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Process-Segmentation//Segment nuclei using CellPose...": lambda: _create_segmentation_script(window)
+        "Tools//Process-Cell types//1. Segment nuclei using CellPose...": lambda: _create_segmentation_script(window)
     }
 
 
