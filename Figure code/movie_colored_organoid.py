@@ -2,6 +2,7 @@ from typing import Optional, List
 
 import numpy
 import scipy
+import tifffile
 from matplotlib import pyplot as plt
 from numpy import ndarray
 import skimage.segmentation
@@ -15,45 +16,33 @@ from organoid_tracker.imaging import io, list_io
 import figure_lib
 from organoid_tracker.linking import nearby_position_finder
 
-_LIST_FILE = "../../Data/Predicted data.autlist"
+_LIST_FILE = "../../Data/Predicted data (automatic).autlist"
+_OUTPUT_FILE = "../Figures/movie_{experiment}.tif"
 
 _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)
 
-# Alternative image:
-# _EXPERIMENT_NAME = "x20200614pos002"
-# _Z = 4
-# _X_MIN = 200
-# _X_MAX = _X_MIN + 250
-# _Y_MIN = 20
-# _Y_MAX = _Y_MIN + 250
-# _TIME_POINT = TimePoint(347)
-_EXPERIMENT_NAME = "x20190926pos01"
 _Z = 6
-_X_MIN = 15
-_X_MAX = _X_MIN + 250
-_Y_MIN = 250
-_Y_MAX = _Y_MIN + 250
-_TIME_POINT = TimePoint(330)
 
 
 def main():
     for experiment in list_io.load_experiment_list_file(_LIST_FILE):
-        if experiment.name.get_name() != _EXPERIMENT_NAME:
-            continue
+        print(f"Working on {experiment.name}...")
+        time_point_count = len(list(experiment.positions.time_points()))
 
-        image_nuclei = _get_nuclear_image_2d_gray(experiment, _TIME_POINT)
-        image_colored = _get_cell_types_image_rgb(experiment, _TIME_POINT)
-        image = image_colored * image_nuclei
-        image = image[_Y_MIN:_Y_MAX, _X_MIN:_X_MAX]
+        movie = None
+        for i, time_point in enumerate(experiment.positions.time_points()):
+            print(time_point.time_point_number(), end="  ")
+            image_nuclei = _get_nuclear_image_2d_gray(experiment, time_point)
+            image_colored = _get_cell_types_image_rgb(experiment, time_point)
+            image = image_colored * image_nuclei
 
-        figure = figure_lib.new_figure()
-        ax = figure.gca()
-        ax.imshow(image, cmap="gray")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        plt.show()
-        return
+            if movie is None:
+                movie = numpy.zeros((time_point_count,) + image.shape, dtype=image.dtype)
+            movie[i] = image
+
+        tifffile.imwrite(_OUTPUT_FILE.format(experiment=experiment.name.get_save_name()), movie,
+                         compression=tifffile.COMPRESSION.ADOBE_DEFLATE, compressionargs={"level": 9})
 
 
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:
@@ -63,12 +52,12 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
     if probabilities is not None:
         return probabilities
 
-    past_position = experiment.links.find_single_past(position)
+    past_postiion = experiment.links.find_single_past(position)
     future_position = experiment.links.find_single_future(position)
-    past_past_position = None if past_position is None else experiment.links.find_single_past(past_position)
+    past_past_position = None if past_postiion is None else experiment.links.find_single_past(past_postiion)
     future_future_position = None if future_position is None else experiment.links.find_single_future(future_position)
 
-    for search_position in [past_position, future_position, past_past_position, future_future_position]:
+    for search_position in [past_postiion, future_position, past_past_position, future_future_position]:
         if search_position is None:
             continue
         probabilities = experiment.position_data.get_position_data(search_position, "ct_probabilities")
