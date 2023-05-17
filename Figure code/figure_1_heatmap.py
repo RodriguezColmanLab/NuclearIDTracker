@@ -1,6 +1,8 @@
+import numpy
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
+import scipy
 
 import figure_lib
 
@@ -21,8 +23,12 @@ def main():
 
     # Plot!
     _ = figure_lib.new_figure()
+    clustering_variables_result = scipy.cluster.hierarchy.linkage(adata.X.T, method="average")
+    reordering = scipy.cluster.hierarchy.leaves_list(clustering_variables_result)
+    var_names = numpy.array(adata.var_names)
+
     scanpy.plotting.heatmap(adata,
-                            var_names=adata.var_names,
+                            var_names=var_names[reordering],
                             groupby="cell_type_training",
                             cmap="PiYG_r",
                             swap_axes=True,
