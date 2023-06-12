@@ -1,37 +1,21 @@
-import math
-from collections import defaultdict
 from typing import Tuple, List, Optional, Union
 
-from numpy import ndarray
-
-import figure_lib
 import matplotlib.cm
 import numpy
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from numpy import ndarray
 
+import figure_lib
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.core.typing import MPLColor
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking_analysis.lineage_drawing import LineageDrawing
-from organoid_tracker.position_analysis import intensity_calculator
 
 _DATA_FILE = "../../Data/Predicted data.autlist"
-_COLORMAP = matplotlib.cm.coolwarm
-_AVERAGING_TIME_POINTS = 6
 _EXPERIMENT_NAME = "x20190926pos01"
-
-
-def _get_min_max_chance_per_cell_type(experiment: Experiment) -> Tuple[ndarray, ndarray]:
-    probabilities = numpy.array([probabilities for position, probabilities in
-                                 experiment.position_data.find_all_positions_with_data("ct_probabilities")])
-    min_intensity = numpy.min(probabilities, axis=0)
-    max_intensity = numpy.quantile(probabilities, q=0.95, axis=0)
-
-    return min_intensity, max_intensity
 
 
 def main():
@@ -86,8 +70,8 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
     cell_type_names = experiment.global_data.get_data("ct_probabilities")
     stem_index = cell_type_names.index("STEM")
     paneth_index = cell_type_names.index("PANETH")
-    enterocyte_index = cell_type_names.index("ENTEROCYTE")
-    min_probabilities, max_probabilities = _get_min_max_chance_per_cell_type(experiment)
+    differentiated_index = cell_type_names.index("OTHER_DIFFERENTIATED")
+    min_probabilities, max_probabilities = figure_lib.get_min_max_chance_per_cell_type(experiment)
 
     def filter_lineages(starting_track: LinkingTrack):
         min_time_point_number = starting_track.min_time_point_number()
@@ -107,9 +91,9 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
                    (max_probabilities[stem_index] - min_probabilities[stem_index])
         panethness = (cell_type_probabilities[paneth_index] - min_probabilities[paneth_index]) / \
                      (max_probabilities[paneth_index] - min_probabilities[paneth_index])
-        enterocyteness = (cell_type_probabilities[enterocyte_index] - min_probabilities[enterocyte_index]) / \
-                         (max_probabilities[enterocyte_index] - min_probabilities[enterocyte_index])
-        return _clip(panethness), _clip(stemness), _clip(enterocyteness)
+        differentiatedness = (cell_type_probabilities[differentiated_index] - min_probabilities[differentiated_index]) / \
+                         (max_probabilities[differentiated_index] - min_probabilities[differentiated_index])
+        return _clip(panethness), _clip(stemness), _clip(differentiatedness)
 
     y_min = 0
     y_max = experiment.positions.last_time_point_number() * resolution.time_point_interval_h

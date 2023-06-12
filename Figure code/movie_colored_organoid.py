@@ -17,7 +17,7 @@ import figure_lib
 from organoid_tracker.linking import nearby_position_finder
 
 _LIST_FILE = "../../Data/Predicted data (automatic).autlist"
-_OUTPUT_FILE = "../Figures/movie_{experiment}.tif"
+_OUTPUT_FILE = "../Figures/movie_colored_{experiment}.tif"
 
 _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)

@@ -5,10 +5,10 @@ from anndata import AnnData
 
 import lib_models
 
-_MODEL_FOLDER = r"Output models\epochs-1-neurons-0"
-_INPUT_FILE = "all_data.h5ad"
-_OUTPUT_FILE = "all_data_with_predictions.h5ad"
-_PREDICTIONS_FILE = "predictions_only.h5ad"
+_MODEL_FOLDER = r"../Data/Models/epochs-1-neurons-0"
+_INPUT_FILE = "../Data/all_data.h5ad"
+_OUTPUT_FILE = "../Data/all_data_with_predictions.h5ad"
+_PREDICTIONS_FILE = "../Data/predictions_only.h5ad"
 
 
 def main():

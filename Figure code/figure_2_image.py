@@ -21,20 +21,20 @@ _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)
 
 # Alternative image:
-# _EXPERIMENT_NAME = "x20200614pos002"
-# _Z = 4
-# _X_MIN = 200
-# _X_MAX = _X_MIN + 250
-# _Y_MIN = 20
-# _Y_MAX = _Y_MIN + 250
-# _TIME_POINT = TimePoint(347)
-_EXPERIMENT_NAME = "x20190926pos01"
-_Z = 6
-_X_MIN = 15
+_EXPERIMENT_NAME = "x20200614pos002"
+_Z = 4
+_X_MIN = 200
 _X_MAX = _X_MIN + 250
-_Y_MIN = 250
+_Y_MIN = 20
 _Y_MAX = _Y_MIN + 250
-_TIME_POINT = TimePoint(330)
+_TIME_POINT = TimePoint(347)
+# _EXPERIMENT_NAME = "x20190926pos01"
+# _Z = 6
+# _X_MIN = 15
+# _X_MAX = _X_MIN + 250
+# _Y_MIN = 250
+# _Y_MAX = _Y_MIN + 250
+# _TIME_POINT = TimePoint(330)
 
 
 def main():
@@ -106,7 +106,7 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint):
         # Calculate the desired color
         color = numpy.array([probabilities[cell_types.index("PANETH")],
             probabilities[cell_types.index("STEM")],
-            probabilities[cell_types.index("ENTEROCYTE")]])
+            probabilities[cell_types.index("OTHER_DIFFERENTIATED")]])
 
         # Color the target image by the calculated color
         for i in range(len(color)):

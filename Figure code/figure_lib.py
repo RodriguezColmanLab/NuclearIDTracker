@@ -1,10 +1,13 @@
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Union, Iterable
 
+import numpy
 import scanpy.preprocessing
 from anndata import AnnData
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
+from numpy import ndarray
 
+from organoid_tracker.core.experiment import Experiment
 
 CELL_TYPE_PALETTE = {
     "ENTEROCYTE": "#100069",
@@ -21,6 +24,15 @@ CELL_TYPE_PALETTE = {
     "TA": "#eeeeee",
     "NONE": "#eeeeee"
 }
+
+
+def get_min_max_chance_per_cell_type(experiment: Union[Experiment, Iterable[Experiment]]) -> Tuple[ndarray, ndarray]:
+    probabilities = numpy.array([probabilities for position, probabilities in
+                                 experiment.position_data.find_all_positions_with_data("ct_probabilities")])
+    min_intensity = numpy.min(probabilities, axis=0)
+    max_intensity = numpy.quantile(probabilities, q=0.95, axis=0)
+
+    return min_intensity, max_intensity
 
 
 def standard_preprocess(adata: AnnData) -> AnnData:

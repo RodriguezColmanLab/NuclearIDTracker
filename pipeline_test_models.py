@@ -15,8 +15,8 @@ from sklearn.model_selection import KFold
 from lib_models import build_model, ModelInputOutput
 
 _NUM_FOLDS = 5
-_HIDDEN_NEURONS = [0]#[0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
-_EPOCHS = [1]#[1, 2, 3, 4, 5, 6]
+_HIDDEN_NEURONS = [0]#, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+_EPOCHS = [1, 2, 3, 4, 5, 6]
 _OUTPUT_FOLDER = "../Data/Models"
 _TRAINING_DATA_FILE = "../Data/all_data.h5ad"
 
@@ -93,6 +93,8 @@ def main():
 
     for epochs in _EPOCHS:
         for hidden_neurons in _HIDDEN_NEURONS:
+            if hidden_neurons == 0 and epochs > 1:
+                continue  # Doesn't make sense to test this, as for linear models we don't use epochs
             print(f"Working on epochs {epochs}, neurons {hidden_neurons}...")
             kfold = KFold(n_splits=_NUM_FOLDS, shuffle=True)
             weights_train = _calculate_class_weights(adata.obs["cell_type"])
@@ -137,7 +139,7 @@ def _plot_results(results: _ResultContainer):
     ax.set_xscale("symlog", linthresh=10)
     ax.set_ylim(0, 1)
     ax.set_xlabel("Neurons in hidden layer")
-    ax.set_ylabel("Accuracy (+- st.dev.)")
+    ax.set_ylabel("Accuracy (± st.dev.)")
     ax.legend()
     plt.show()
 

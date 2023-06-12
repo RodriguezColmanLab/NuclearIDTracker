@@ -31,6 +31,7 @@ SECRETIVE_PRECURSOR = Marker([Position], "SECRETIVE_PRECURSOR", "precursor of a 
 SECRETIVE_PROGENY = Marker([Position], "SECRETIVE_PROGENY", "progeny of a (supposedly) secretory cell", (255, 56, 53))
 SECRETORY = Marker([Position], "SECRETORY", "secretory cell of unknown type", (182, 1, 1))
 GOBLET = Marker([Position], "GOBLET", "goblet cell", (181, 114, 0))
+MATURE_GOBLET = Marker([Position], "MATURE_GOBLET", "mature goblet cell", (182, 2, 1))
 ENTEROENDOCRINE = Marker([Position], "ENTEROENDOCRINE", "enteroendocrine cell", (181, 0, 69))
 TUFT = Marker([Position], "TUFT", "Tuft cell", (178, 0, 107))
 WGA_PLUS = Marker([Position], "WGA_PLUS", "WGA+ (Paneth/goblet)", (181, 72, 0))
@@ -51,9 +52,9 @@ def init(window: Window):
 
 
 def get_markers() -> List[Marker]:
-    return [STEM_PUTATIVE, STEM_PROGENY, STEM, ABSORPTIVE_PRECURSOR, ABSORPTIVE_PROGENY, M_CELL,
-            ENTEROCYTE, PANETH_PRECURSOR, PANETH, SECRETIVE_PRECURSOR, SECRETIVE_PROGENY, SECRETORY, GOBLET, ENTEROENDOCRINE,
-            TUFT, UNLABELED, WGA_PLUS, LUMEN]\
+    return [STEM_PUTATIVE, STEM_PROGENY, STEM, ABSORPTIVE_PRECURSOR, ABSORPTIVE_PROGENY, M_CELL, ENTEROCYTE,
+            PANETH_PRECURSOR, PANETH, SECRETIVE_PRECURSOR, SECRETIVE_PROGENY, SECRETORY, MATURE_GOBLET, GOBLET,
+            ENTEROENDOCRINE, TUFT, UNLABELED, WGA_PLUS, LUMEN]\
            + [CRYPT]
 
 
