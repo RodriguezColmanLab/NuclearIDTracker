@@ -1,11 +1,11 @@
 *Work in progress*
 
-# PoseToTypeTracker
+# NuclearIDTracker
 
 Scripts and [OrganoidTracker](https://github.com/jvzonlab/OrganoidTracker) plugins to predict cell types based on nucleus shape.
 
 ![Example image](Documentation/example_image.png)
-*Nuclei colored by cell types predicted based on the nucleus shape*
+<p align="center"><i>Nuclei colored by cell types that were predicted using the nucleus shape</i></p>
 
 ## Intended workflow for training:
 1. Obtain a set of organoids with fluorescent nuclei where you figure out the cell types, for example using antibody staining.
