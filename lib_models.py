@@ -143,7 +143,7 @@ def build_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons
         # Just use a linear classifier, solved analytically
         scaler = StandardScaler()
         scaler.fit(x_train)
-        logistic_regression = LogisticRegression()
+        logistic_regression = LogisticRegression(max_iter=1000)
         return _LinearModel(input_output, scaler, logistic_regression)
 
     # Build a shallow Tensorflow model
