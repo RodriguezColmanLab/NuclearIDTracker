@@ -21,6 +21,7 @@ ABSORPTIVE_PRECURSOR = Marker([Position], "ABSORPTIVE_PRECURSOR", "precursor of 
 ABSORPTIVE_PROGENY = Marker([Position], "ABSORPTIVE_PROGENY", "progeny of a (supposedly) absorptive cell", (0, 8, 255))
 M_CELL = Marker([Position], "M_CELL", "M cell", (0, 165, 255))
 ENTEROCYTE = Marker([Position], "ENTEROCYTE", "enterocyte cell", (16, 0, 105))
+OTHER_DIFFERENTIATED = Marker([Position], "OTHER_DIFFERENTIATED", "other differentiated cell", (16, 0, 105))
 
 # Paneth cells
 PANETH_PRECURSOR = Marker([Position], "PANETH_PRECURSOR", "precursor of a Paneth cell", (192, 10, 10))
@@ -44,18 +45,11 @@ LUMEN = Marker([Position], "LUMEN", "lumen", (200, 200, 200))
 CRYPT = Marker([Spline], "CRYPT", "crypt axis", (255, 0, 0), is_axis=True)
 
 
-def init(window: Window):
-    # No longer called by newer version of OrganoidTracker - OrganoidTracker now calls get_markers()
-    gui_experiment = window.get_gui_experiment()
-    for marker in get_markers():
-        gui_experiment.register_marker(marker)
-
-
 def get_markers() -> List[Marker]:
     return [STEM_PUTATIVE, STEM_PROGENY, STEM, ABSORPTIVE_PRECURSOR, ABSORPTIVE_PROGENY, M_CELL, ENTEROCYTE,
-            PANETH_PRECURSOR, PANETH, SECRETIVE_PRECURSOR, SECRETIVE_PROGENY, SECRETORY, MATURE_GOBLET, GOBLET,
-            ENTEROENDOCRINE, TUFT, UNLABELED, WGA_PLUS, LUMEN]\
-           + [CRYPT]
+            OTHER_DIFFERENTIATED, PANETH_PRECURSOR, PANETH, SECRETIVE_PRECURSOR, SECRETIVE_PROGENY, SECRETORY,
+            MATURE_GOBLET, GOBLET, ENTEROENDOCRINE, TUFT, UNLABELED, WGA_PLUS, LUMEN] \
+        + [CRYPT]
 
 
 def get_menu_items(window: Window) -> Dict[str, Any]:
@@ -66,8 +60,8 @@ def get_menu_items(window: Window) -> Dict[str, Any]:
 
 def _assign_types(window: Window):
     if not dialog.prompt_confirmation("Staining types", "This assigns types to mother cells based on the type of the"
-                                      " daughter cell. For example, the parent of a stem cell also becomes a stem cell."
-                                      "\n\nYou cannot undo this operation. Do you want to continue?"):
+                                                        " daughter cell. For example, the parent of a stem cell also becomes a stem cell."
+                                                        "\n\nYou cannot undo this operation. Do you want to continue?"):
         return
 
     for experiment in window.get_active_experiments():
@@ -75,6 +69,7 @@ def _assign_types(window: Window):
     for tab in window.get_gui_experiment().get_all_tabs():
         tab.undo_redo.clear()
     window.get_gui_experiment().redraw_data()
+
 
 def _assign_types_to_experiment(experiment: Experiment):
     # Loop through all tracks reaching the end of the time lapse to add "UNLABELED"
@@ -102,9 +97,11 @@ def _assign_types_to_experiment(experiment: Experiment):
             next_type_2 = position_markers.get_position_type(position_data, next_track_2.find_first_position())
             mother_type = position_markers.get_position_type(position_data, track.find_last_position())
             if next_type_1 is None:
-                _assign_position_type_if_not_none(position_data, next_track_1, _get_progeny_type(mother_type, next_type_2))
+                _assign_position_type_if_not_none(position_data, next_track_1,
+                                                  _get_progeny_type(mother_type, next_type_2))
             if next_type_2 is None:
-                _assign_position_type_if_not_none(position_data, next_track_2, _get_progeny_type(mother_type, next_type_1))
+                _assign_position_type_if_not_none(position_data, next_track_2,
+                                                  _get_progeny_type(mother_type, next_type_1))
 
 
 def _assign_unlabeled_at_end_of_experiment(experiment):
@@ -201,19 +198,19 @@ def _get_precursor_type(daughter1_type: Optional[str], daughter2_type: Optional[
     sure1 = _is_known_type(daughter1_type)
     sure2 = _is_known_type(daughter2_type)
 
-    if absorptive1 == absorptive2 == True\
-            or (absorptive1 and sure1 and daughter2_type is None)\
+    if absorptive1 == absorptive2 == True \
+            or (absorptive1 and sure1 and daughter2_type is None) \
             or (daughter1_type is None and absorptive2 and sure2):
         # If both are supposedly absorptive, or one is definitely absorptive and the other is unknown, assume
         # absorptive precursor
         return ABSORPTIVE_PRECURSOR.save_name
-    if paneth1 == paneth2 == True\
+    if paneth1 == paneth2 == True \
             or (paneth1 and sure1 and daughter2_type is None) \
             or (daughter1_type is None and paneth2 and sure2):
         # If both are supposedly Paneth, or one is definitely Paneth and the other is unknown, assume Paneth
         # precursor
         return PANETH_PRECURSOR.save_name
-    if secretive1 == secretive2 == True\
+    if secretive1 == secretive2 == True \
             or (secretive1 and sure1 and daughter2_type is None) \
             or (daughter1_type is None and secretive2 and sure2):
         # If both are supposedly secretive, or one is definitely secretive and the other is unknown, assume secretive

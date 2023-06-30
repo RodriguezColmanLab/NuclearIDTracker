@@ -1,13 +1,11 @@
 import numpy
 from matplotlib import pyplot as plt
 
-cell_types = ['stem', 'enterocyte', 'Paneth', 'other secretory']
-confusion_matrix = numpy.array([[ 699, 17, 20, 7],
-                                [ 84 , 485, 37, 14],
-                                [ 71 , 25, 244, 6],
-                                [ 8  , 54, 41, 12]
-                                ]
-                               )
+cell_types = ['goblet', 'other differentiated', 'Paneth', 'stem']
+confusion_matrix = numpy.array([[35, 46, 3, 0],
+                                [7, 659, 52, 64],
+                                [2, 72, 226, 66],
+                                [0, 37, 20, 686]])
 
 fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
 
