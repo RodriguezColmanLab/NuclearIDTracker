@@ -22,9 +22,13 @@ def _convert_cell_type(position_type: Optional[str]) -> str:
     (We're using "NONE" instead of None because that works better with pandas.Categorial.)"""
     if position_type is None:
         return "NONE"
-    if position_type in {"ENTEROCYTE", "ENTEROENDOCRINE", "GOBLET", "TUFT", "SECRETORY"}:
+    if position_type == "ENTEROCYTE":
+        return "ENTEROCYTE"
+    if position_type == "UNLABELED":
+        return "UNLABELED"
+    if position_type in {"ENTEROENDOCRINE", "GOBLET", "TUFT", "SECRETORY"}:
         # Seeing the difference between these types is hard for the network
-        return "OTHER_DIFFERENTIATED"
+        return "OTHER_SECRETORY"
     if position_type in {"PANETH", "WGA_PLUS"}:
         return "PANETH"
     if position_type in {"STEM", "STEM_PUTATIVE"}:

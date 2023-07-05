@@ -44,7 +44,7 @@ def predict_organoid(experiment: Experiment):
     # Store the predicted cell types
     experiment.global_data.set_data("ct_probabilities", cell_types)
     for position, probability_by_cell_type in zip(positions_corresponding_to_data_array, probabilities):
-        experiment.position_data.set_position_data(position, "ct_probabilities", list(probability_by_cell_type))
+        experiment.position_data.set_position_data(position, "ct_probabilities", [float(prob) for prob in probability_by_cell_type])
         cell_type = cell_types[numpy.argmax(probability_by_cell_type)]
         position_markers.set_position_type(experiment.position_data, position, cell_type)
 

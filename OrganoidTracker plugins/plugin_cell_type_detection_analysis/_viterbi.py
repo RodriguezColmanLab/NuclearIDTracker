@@ -19,36 +19,11 @@ class _TransitionMatrix:
     def __init__(self):
         self._transition_dict = dict()
 
-    def add_transition(self, cell_type_previous: ClassifiedCellType, cell_type_next: ClassifiedCellType):
-        """Adds a cell type transition. This function ignores transitions from or to UNKNOWN_CELL_TYPE."""
-        if cell_type_next == UNKNOWN_CELL_TYPE:
-            return  # Ignore these types
-        if cell_type_previous == UNKNOWN_CELL_TYPE:
-            cell_type_previous = ClassifiedCellType("stem")  # Assume all cells come from stem cells
-
-        if cell_type_previous not in self._transition_dict:
-            self._transition_dict[cell_type_previous] = dict()
-        from_dict = self._transition_dict[cell_type_previous]
-
-        if cell_type_next not in from_dict:
-            from_dict[cell_type_next] = 1
-        else:
-            from_dict[cell_type_next] += 1
-
     def print(self):
         for from_type, from_dict in self._transition_dict.items():
             sum_of_type = sum(from_dict.values())
             for to_type, count in from_dict.items():
                 print(from_type, to_type, count, count / sum_of_type)
-
-    def serialize(self) -> Dict[str, Dict[str, int]]:
-        """Serializes this object to a json-compatible dictionary."""
-        return_dict = dict()
-        for from_type, from_dict in self._transition_dict.items():
-            return_dict[from_type.identifier] = dict()
-            for to_type, count in from_dict.items():
-                return_dict[from_type.identifier][to_type.identifier] = count
-        return return_dict
 
     def load_from_serialized(self, serialized_dict: Dict[str, Dict[str, int]]):
         """Loads the data from a dictionary created by self.serialize(). Clears any existing data in this object."""
@@ -393,17 +368,6 @@ class Viterbi:
         return trellis_and_pointers
 
 
-def save_transition_probabilities(experiments: List[Experiment], file: str):
-    """Calculates the cell type transition probabilities from the list of experiments, and saves those to the given
-    folder."""
-    transition_matrix = _TransitionMatrix()
-    for experiment in experiments:
-        _get_transition_probabilities_single_experiment(experiment, into=transition_matrix)
-
-    with open(file, "w") as handle:
-        json.dump(transition_matrix.serialize(), handle)
-
-
 def load_transition_probabilities(file: str) -> Viterbi:
     """Loads a Viterbi model from a folder where it was saved using self.save_transition_probabilities(...)."""
     transition_matrix = _TransitionMatrix()
@@ -433,9 +397,3 @@ def _get_links_with_cell_types(experiment: Experiment, *, allow_cell_type_guessi
         cell_type_to = convert_cell_type(position_markers.get_position_type(position_data, position_to),
                                          allow_guessing=allow_cell_type_guessing)
         yield position_from, cell_type_from, position_to, cell_type_to
-
-
-def _get_transition_probabilities_single_experiment(experiment: Experiment, *, into: _TransitionMatrix):
-    for cell_pos_previous, cell_type_previous, cell_pos_next, cell_type_next in\
-            _get_links_with_cell_types(experiment, allow_cell_type_guessing=True):
-        into.add_transition(cell_type_previous, cell_type_next)

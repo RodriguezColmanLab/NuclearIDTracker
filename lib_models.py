@@ -1,13 +1,14 @@
 import json
 import os
 import pickle
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple
 
 import numpy
 import scipy.special
 import tensorflow
 from numpy import ndarray
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -19,31 +20,34 @@ class ModelInputOutput(NamedTuple):
 
 class OurModel(ABC):
 
+    @abstractmethod
     def get_input_output(self) -> ModelInputOutput:
         """Describes the input and output of the model: what input parameters does it need, and what cell types does it
         output?"""
         ...
 
-    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int):
+    @abstractmethod
+    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int = 1):
         """Fits the model to the training data."""
         ...
 
+    @abstractmethod
     def evaluate(self, x_test: ndarray, y_test: ndarray) -> Dict[str, float]:
         """Returns evaluation metrics, like "accuracy"."""
         ...
 
+    @abstractmethod
     def save(self, folder: str):
         """Saves the model to a folder."""
         ...
 
+    @abstractmethod
     def predict(self, x_values: ndarray) -> ndarray:
         """Gives you the probability of all cell types."""
         ...
 
 
-
 class _KerasModel(OurModel):
-
     _input_output: ModelInputOutput
     _keras_model: tensorflow.keras.Model
 
@@ -51,9 +55,9 @@ class _KerasModel(OurModel):
         self._input_output = input_output
         self._keras_model = keras_model
 
-    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int):
+    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int = 1):
         self._keras_model.fit(x_train, y_train,
-                  epochs=epochs, class_weight=class_weights, verbose=False)
+                              epochs=epochs, class_weight=class_weights, verbose=False)
 
     def evaluate(self, x_test: ndarray, y_test: ndarray) -> Dict[str, float]:
         return self._keras_model.evaluate(x_test, y_test, return_dict=True, verbose=0)
@@ -75,7 +79,6 @@ class _KerasModel(OurModel):
 
 
 class _LinearModel(OurModel):
-
     _input_output: ModelInputOutput
     _scaler: StandardScaler
     _logistic_regression: LogisticRegression
@@ -88,7 +91,7 @@ class _LinearModel(OurModel):
     def get_input_output(self) -> ModelInputOutput:
         return self._input_output
 
-    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int):
+    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int = 1):
         class_weights_array = numpy.zeros(y_train.shape[0], dtype=numpy.float64)
         for index, output_class in enumerate(y_train):
             class_weights_array[index] = class_weights[output_class]
@@ -120,6 +123,40 @@ class _LinearModel(OurModel):
         return probabilities
 
 
+class _RandomForestModel(OurModel):
+    """Uses a random forest to classify cell types."""
+
+    _input_output: ModelInputOutput
+    _random_forest: RandomForestClassifier
+
+    def __init__(self, input_output: ModelInputOutput, random_forest: RandomForestClassifier):
+        self._input_output = input_output
+        self._random_forest = random_forest
+
+    def get_input_output(self) -> ModelInputOutput:
+        return self._input_output
+
+    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int = 1):
+        class_weights_array = numpy.zeros(y_train.shape[0], dtype=numpy.float64)
+        for index, output_class in enumerate(y_train):
+            class_weights_array[index] = class_weights[output_class]
+        self._random_forest.fit(x_train, y_train, sample_weight=class_weights_array)
+
+    def evaluate(self, x_test: ndarray, y_test: ndarray) -> Dict[str, float]:
+        return {
+            "accuracy": self._random_forest.score(x_test, y_test)
+        }
+
+    def save(self, folder: str):
+        pickle_file = os.path.join(folder, "random_forest_pickled.sav")
+        with open(pickle_file, "wb") as handle:
+            pickle.dump(self._input_output, handle)
+            pickle.dump(self._random_forest, handle)
+
+    def predict(self, x_values: ndarray) -> ndarray:
+        return self._random_forest.predict_proba(x_values)
+
+
 def load_model(folder: str) -> OurModel:
     pickle_file_for_linear_model = os.path.join(folder, "linear_model_pickled.sav")
     if os.path.exists(pickle_file_for_linear_model):
@@ -127,8 +164,15 @@ def load_model(folder: str) -> OurModel:
             input_output = pickle.load(handle)
             scaler = pickle.load(handle)
             regressor = pickle.load(handle)
-
         return _LinearModel(input_output, scaler, regressor)
+
+    pickle_file_for_random_forest = os.path.join(folder, "random_forest_pickled.sav")
+    if os.path.exists(pickle_file_for_random_forest):
+        with open(pickle_file_for_random_forest, "rb") as handle:
+            input_output = pickle.load(handle)
+            random_forest = pickle.load(handle)
+        return _RandomForestModel(input_output, random_forest)
+
     keras_model = tensorflow.keras.models.load_model(folder)
     with open(os.path.join(folder, "settings.json")) as handle:
         settings = json.load(handle)
@@ -138,7 +182,14 @@ def load_model(folder: str) -> OurModel:
                        keras_model)
 
 
-def build_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons: int) -> OurModel:
+def build_random_forest(input_output: ModelInputOutput, tree_count: int = 100) -> OurModel:
+    """Builds a random forest model. It will initially be untrained, call OurModel.fit to train it."""
+    return _RandomForestModel(input_output, RandomForestClassifier(max_features="sqrt", n_estimators=tree_count))
+
+
+def build_shallow_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons: int) -> OurModel:
+    """Builds a shallow model, so with one hidden layer. If hidden_nearons==0, then we have no hidden layer at all, and
+    instead we'll have a linear model."""
     if hidden_neurons == 0:
         # Just use a linear classifier, solved analytically
         scaler = StandardScaler()

@@ -12,7 +12,7 @@ from matplotlib.axes import Axes
 from numpy import ndarray
 from sklearn.model_selection import KFold
 
-from lib_models import build_model, ModelInputOutput
+from lib_models import build_shallow_model, ModelInputOutput
 
 _NUM_FOLDS = 5
 _HIDDEN_NEURONS = [0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
@@ -101,7 +101,7 @@ def main():
             saved_a_model = False
             for train_indices, test_indices in kfold.split(x_values, y_values):
                 # Build and train a neural network
-                model = build_model(input_output, x_values[train_indices], hidden_neurons=hidden_neurons)
+                model = build_shallow_model(input_output, x_values[train_indices], hidden_neurons=hidden_neurons)
                 model.fit(x_values[train_indices, :], y_values[train_indices],
                           epochs=epochs, class_weights=weights_train)
 
@@ -123,7 +123,7 @@ def main():
 
     _plot_results(results)
     print(cell_types)
-    print(results.get_confusion_matrix(0, 1))
+    print(results.get_confusion_matrix(10000, 6))
 
 
 def _plot_results(results: _ResultContainer):

@@ -1,7 +1,5 @@
-from typing import Tuple, List, Optional, Union
+from typing import List, Optional, Union
 
-import matplotlib.cm
-import numpy
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from numpy import ndarray
@@ -70,7 +68,7 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
     cell_type_names = experiment.global_data.get_data("ct_probabilities")
     stem_index = cell_type_names.index("STEM")
     paneth_index = cell_type_names.index("PANETH")
-    differentiated_index = cell_type_names.index("OTHER_DIFFERENTIATED")
+    enterocyte_index = cell_type_names.index("ENTEROCYTE")
     min_probabilities, max_probabilities = figure_lib.get_min_max_chance_per_cell_type(experiment)
 
     def filter_lineages(starting_track: LinkingTrack):
@@ -91,9 +89,9 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
                    (max_probabilities[stem_index] - min_probabilities[stem_index])
         panethness = (cell_type_probabilities[paneth_index] - min_probabilities[paneth_index]) / \
                      (max_probabilities[paneth_index] - min_probabilities[paneth_index])
-        differentiatedness = (cell_type_probabilities[differentiated_index] - min_probabilities[differentiated_index]) / \
-                         (max_probabilities[differentiated_index] - min_probabilities[differentiated_index])
-        return _clip(panethness), _clip(stemness), _clip(differentiatedness)
+        enterocyteness = (cell_type_probabilities[enterocyte_index] - min_probabilities[enterocyte_index]) / \
+                         (max_probabilities[enterocyte_index] - min_probabilities[enterocyte_index])
+        return _clip(panethness), _clip(stemness), _clip(enterocyteness)
 
     y_min = 0
     y_max = experiment.positions.last_time_point_number() * resolution.time_point_interval_h

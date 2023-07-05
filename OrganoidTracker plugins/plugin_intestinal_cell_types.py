@@ -54,7 +54,7 @@ def get_markers() -> List[Marker]:
 
 def get_menu_items(window: Window) -> Dict[str, Any]:
     return {
-        "Edit//Types-Guess parent cell types...": lambda: _assign_types(window),
+        "Tools//Process-Cell types//Transitions-Guess parent cell types...": lambda: _assign_types(window),
     }
 
 
