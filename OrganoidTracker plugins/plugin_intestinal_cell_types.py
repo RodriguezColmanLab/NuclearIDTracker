@@ -20,7 +20,7 @@ STEM = Marker([Position], "STEM", "stem cell", (38, 204, 60))
 ABSORPTIVE_PRECURSOR = Marker([Position], "ABSORPTIVE_PRECURSOR", "precursor of an absorptive cell", (0, 8, 255))
 ABSORPTIVE_PROGENY = Marker([Position], "ABSORPTIVE_PROGENY", "progeny of a (supposedly) absorptive cell", (0, 8, 255))
 M_CELL = Marker([Position], "M_CELL", "M cell", (0, 165, 255))
-ENTEROCYTE = Marker([Position], "ENTEROCYTE", "enterocyte cell", (16, 0, 105))
+ENTEROCYTE = Marker([Position], "ENTEROCYTE", "enterocyte cell", (24, 0, 165))
 OTHER_DIFFERENTIATED = Marker([Position], "OTHER_DIFFERENTIATED", "other differentiated cell", (16, 0, 105))
 
 # Paneth cells
@@ -38,7 +38,7 @@ TUFT = Marker([Position], "TUFT", "Tuft cell", (178, 0, 107))
 WGA_PLUS = Marker([Position], "WGA_PLUS", "WGA+ (Paneth/goblet)", (181, 72, 0))
 
 # Used for cells that have no label for sure
-UNLABELED = Marker([Position], "UNLABELED", "unlabeled", (0, 0, 0))
+UNLABELED = Marker([Position], "UNLABELED", "unlabeled", (150, 150, 150))
 
 # Markers that mark something else
 LUMEN = Marker([Position], "LUMEN", "lumen", (200, 200, 200))
