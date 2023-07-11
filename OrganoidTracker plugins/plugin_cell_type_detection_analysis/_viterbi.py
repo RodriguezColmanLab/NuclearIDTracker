@@ -2,7 +2,7 @@ import json
 import math
 from typing import List, Dict, NamedTuple, Optional, Tuple, Iterable, Set
 
-from ._cell_type_converter import ClassifiedCellType, UNKNOWN_CELL_TYPE, convert_cell_type
+from ._cell_type_converter import ClassifiedCellType, convert_cell_type
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
@@ -126,6 +126,8 @@ class _TrellisAndPointersOfTrack:
 
         Returned iterable follows chronological order.
         """
+        if len(self._trellis_and_pointers) == 0:
+            return []  # No data to return
         time_points = list(self._trellis_and_pointers.keys())
         time_points.sort()
 
@@ -246,7 +248,7 @@ def _log(value: float):
 def _fetch_emitting_probabilities_in_log(experiment: Experiment,
                                          track: LinkingTrack) -> _EmittingProbabilitiesOfTrack:
     cell_type_order = experiment.global_data.get_data("ct_probabilities")
-    cell_types = [ClassifiedCellType(cell_type.lower()) for cell_type in cell_type_order]
+    cell_types = [ClassifiedCellType(cell_type.upper()) for cell_type in cell_type_order]
 
     positions = list()
     log_emitting_probability = list()
@@ -254,7 +256,8 @@ def _fetch_emitting_probabilities_in_log(experiment: Experiment,
     for position in track.positions():
         probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
         if probabilities is None:
-            continue
+            # Assume equal probabilities, effectively ignoring this time point
+            probabilities = [1 / len(cell_types)] * len(cell_types)
 
         # Sanity check - probabilities must sum to 1
         if abs(sum(probabilities) - 1) > 0.0001:

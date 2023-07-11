@@ -1,15 +1,17 @@
 """Calculates the cell type transitin matrix for the cell types stem, enterocyte, Paneth, other secretory."""
+import json
 from collections import defaultdict
-from typing import Dict, Tuple, Optional, List, Union
+from typing import Dict, Tuple, Optional, Union
 
 from organoid_tracker.core import UserError
+from organoid_tracker.gui import dialog
 from organoid_tracker.gui.window import Window
 from organoid_tracker.position_analysis import position_markers
 
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Process-Cell types//Transitions-Calculate cell type transition matrix...": lambda: _calculate_transition_matrix(window)
+        "Tools//Process-Cell types//Transitions-Save calculated cell type transition matrix...": lambda: _calculate_transition_matrix(window)
     }
 
 
@@ -31,6 +33,10 @@ class _TransitionMatrix:
                 return_dict[from_type] = dict()
             return_dict[from_type][to_type] = count
         return return_dict
+
+    def is_empty(self) -> bool:
+        """Returns True if no cell type transitions (even transitions to the same type) have been recorded."""
+        return len(self._transition_matrix) == 0
 
 
 def _convert_cell_type(position_type: Optional[str]) -> Union[Tuple, Tuple[str], Tuple[str, str]]:
@@ -86,4 +92,13 @@ def _calculate_transition_matrix(window: Window):
                     for cell_type_to in cell_types_to:
                         transition_matrix.record_transition(cell_type_from, cell_type_to, weight=1/transitions)
 
-    print(transition_matrix.serialize())
+    if transition_matrix.is_empty():
+        raise UserError("No cell type transitions", "Didn't find any cell type transitions. Is the cell type information missing?")
+
+    save_file = dialog.prompt_save_file("Save cell type transition file", [("JSON file", "*.json")])
+    if save_file is None:
+        return
+
+    with open(save_file, "w") as handle:
+        json.dump(transition_matrix.serialize(), handle)
+    window.set_status(f"Saved cell type transition matrix to \"{save_file}\".")

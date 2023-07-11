@@ -1,4 +1,4 @@
-from typing import List, Dict, Callable, Any
+from typing import Dict, Any
 
 from organoid_tracker.gui import dialog
 from organoid_tracker.gui.window import Window
@@ -32,8 +32,7 @@ def _unaverage_cell_types(window: Window):
 
 def _viterbi_cell_types(window: Window):
     from ._viterbi_applier import apply_viterbi
-    from ._viterbi import TRANSITION_FILE
-    file = dialog.prompt_load_file("Cell type transition file", [("Transition file", TRANSITION_FILE)])
+    file = dialog.prompt_load_file("Cell type transition file", [("Transition file", "*.json")])
     if file is None:
         return
     for experiment in window.get_active_experiments():
