@@ -73,3 +73,7 @@ def new_figure(size: Tuple[float, float] = (4, 3)) -> Figure:
     plt.rcParams["ytick.color"] = "#2d3436"
 
     return plt.figure(figsize=size)
+
+
+def style_cell_type_name(cell_type_name: str) -> str:
+    return cell_type_name.lower().replace("mature_", "").replace("_", " ")
