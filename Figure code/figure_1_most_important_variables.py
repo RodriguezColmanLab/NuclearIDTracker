@@ -32,7 +32,7 @@ def main():
                        .replace("minor\naxis", "minor axis")
                        .replace("major\naxis", "major axis")
                        for var_name in adata.var_names]
-    adata.obs["cell_type_training"] = [cell_type.lower() for cell_type in adata.obs["cell_type_training"]]
+    adata.obs["cell_type_training"] = [figure_lib.style_cell_type_name(cell_type) for cell_type in adata.obs["cell_type_training"]]
 
     scanpy.tools.rank_genes_groups(adata, 'cell_type_training', method='wilcoxon')
     #scanpy.plotting.rank_genes_groups(adata, n_genes=25, sharey=False)
@@ -49,7 +49,7 @@ def main():
         score_table[:, i] = scores
 
 
-    plot(figure_lib.new_figure(size=(5, 2.6)), cell_types, name_table, score_table)
+    plot(figure_lib.new_figure(size=(6, 2.6)), cell_types, name_table, score_table)
     plt.show()
 
 
