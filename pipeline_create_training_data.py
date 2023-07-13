@@ -24,8 +24,6 @@ def _convert_cell_type(position_type: Optional[str]) -> str:
         return "NONE"
     if position_type == "ENTEROCYTE":
         return "ENTEROCYTE"
-    if position_type == "UNLABELED":
-        return "UNLABELED"
     if position_type in {"PANETH", "WGA_PLUS"}:
         return "PANETH"
     if position_type in {"STEM", "STEM_PUTATIVE"}:

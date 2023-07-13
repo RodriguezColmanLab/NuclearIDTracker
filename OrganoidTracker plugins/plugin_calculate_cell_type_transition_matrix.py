@@ -53,16 +53,9 @@ def _convert_cell_type(position_type: Optional[str]) -> Union[Tuple, Tuple[str],
         return "ENTEROCYTE",
     if position_type == "ABSORPTIVE_PRECURSOR":
         return "STEM", "ENTEROCYTE"
-    if position_type == "UNLABELED":
-        return "STEM", "UNLABELED"
-    if position_type in {"ENTEROENDOCRINE", "GOBLET", "TUFT", "SECRETORY"}:
-        # Seeing the difference between these types is hard for the network
-        return "OTHER_SECRETORY",
-    if position_type == "SECRETIVE_PRECURSOR":
-        return "STEM", "OTHER_SECRETORY"
     if position_type in {"PANETH", "WGA_PLUS"}:
         return "PANETH",
-    if position_type in {"STEM", "STEM_PUTATIVE"}:
+    if position_type in {"STEM", "STEM_PUTATIVE", "UNLABELED"}:
         return "STEM",
     if position_type == "MATURE_GOBLET":
         return "MATURE_GOBLET",
@@ -79,7 +72,7 @@ def _calculate_transition_matrix(window: Window):
             cell_types_to = _convert_cell_type(position_markers.get_position_type(position_data, position_to))
 
             if len(cell_types_from) == 0 and len(cell_types_to) > 0:
-                cell_types_from = ["STEM", "UNLABELED"]  # Assume all cells came from stem cells
+                cell_types_from = ["STEM"]  # Assume all cells came from stem cells
 
             if len(cell_types_from) == len(cell_types_to):
                 # Kept same number of possibilities, add transitions from respective cell types

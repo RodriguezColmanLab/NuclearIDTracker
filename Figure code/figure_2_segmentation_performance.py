@@ -1,16 +1,15 @@
 # We follow the evaluation method of CellPose, so on the X-axis IoU from 0.5 to 1, and on the y axis average precision.
 
 import os
-from typing import Tuple, List, Optional, Iterable, Set, Dict
+from typing import Tuple, List, Optional, Iterable, Dict
 
-import scipy
-from matplotlib import pyplot as plt
-
-import figure_lib
 import numpy
 import skimage.measure
 import tifffile
+from matplotlib import pyplot as plt
 from numpy import ndarray
+
+import figure_lib
 
 _GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
 _AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\CellPose segmentation"
@@ -47,7 +46,6 @@ class _GroundTruthImage:
         Returns the intersection of union, as well as the ground truth nucleus that it intersected with."""
         max_iou = 0
         with_label = None
-        z = automatic_nucleus.centroid[0]
         for overlapper_id in self._get_overlapping_bounding_box(automatic_nucleus.bbox):
             overlapper = self._regionprops[overlapper_id]
 
@@ -81,15 +79,6 @@ class _GroundTruthImage:
             if intersection / union > max_iou:
                 max_iou = float(intersection / union)
                 with_label = overlapper.label
-                z = (bbox_union[0] + bbox_union[3]) / 2
-
-            # if intersection / union > 0.5 and intersection / union < 0.55:
-            #     image = numpy.zeros(mask_overlapper.shape + (3,), dtype=numpy.uint8)
-            #     image[:, :, :, 0] = mask_overlapper * 255
-            #     image[:, :, :, 1] = mask_automatic * 255
-            #     tifffile.imshow(image)
-            #     plt.title(f"{intersection} / {union} = {intersection / union}")
-            #     plt.show()
         return max_iou, with_label
 
     def get_nucleus_ids_and_z(self) -> Iterable[Tuple[int, float]]:

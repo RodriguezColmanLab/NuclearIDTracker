@@ -14,7 +14,8 @@ CELL_TYPE_PALETTE = {
     "ABSORPTIVE_PROGENY": "#0984e3",
     "SECRETORY": "#74b9ff",
     "ENTEROENDOCRINE": "#74b9ff",
-    "GOBLET": "#74b9ff",
+    "OTHER_SECRETORY": "#f39c12",
+    "MATURE_GOBLET": "#74b9ff",
     "SECRETIVE_PROGENY": "#74b9ff",
     "WGA_PLUS": "#74b9ff",
     "PANETH": "#B60101",
@@ -76,4 +77,4 @@ def new_figure(size: Tuple[float, float] = (4, 3)) -> Figure:
 
 
 def style_cell_type_name(cell_type_name: str) -> str:
-    return cell_type_name.lower().replace("mature_", "").replace("_", " ")
+    return cell_type_name.lower().replace("mature_", "").replace("_", " ").replace("paneth", "Paneth")

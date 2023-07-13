@@ -55,8 +55,8 @@ def main():
     fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
 
     scaled_matrix = confusion_matrix.astype(dtype=numpy.float64)
-    # for i in range(scaled_matrix.shape[1]):
-    #     scaled_matrix[i] /= scaled_matrix[i].sum()
+    for i in range(scaled_matrix.shape[1]):
+        scaled_matrix[i] /= scaled_matrix[i].sum()
     max_scaled_value = scaled_matrix.max()
 
     figure = figure_lib.new_figure(size=(4, 3))
@@ -65,7 +65,7 @@ def main():
     for i in range(confusion_matrix.shape[0]):
         for j in range(confusion_matrix.shape[1]):
             color = "white" if scaled_matrix[i, j] > 0.7 * max_scaled_value else "black"
-            ax.text(j, i, f"{scaled_matrix[i, j]:.0f}", horizontalalignment="center", verticalalignment="center",
+            ax.text(j, i, f"{scaled_matrix[i, j] * 100:.0f}%", horizontalalignment="center", verticalalignment="center",
                     color=color)
 
     ax.set_xticks(list(range(len(cell_types))))
@@ -99,10 +99,10 @@ def _evaluate_model() -> Tuple[List[str], _SingleParameterResults]:
         answers = y_values[test_indices]
 
         # Only keep predictions where highest is more than 0.1 higher than previuos
-        predictions_sorted = numpy.partition(predictions, len(cell_types) - 2, axis=1)
-        keep_predictions = numpy.abs(predictions_sorted[:, -2] - predictions_sorted[:, -1]) > 0.10
-        predictions = predictions[keep_predictions]
-        answers = answers[keep_predictions]
+        # predictions_sorted = numpy.partition(predictions, len(cell_types) - 2, axis=1)
+        # keep_predictions = numpy.abs(predictions_sorted[:, -2] - predictions_sorted[:, -1]) > 0.10
+        # predictions = predictions[keep_predictions]
+        # answers = answers[keep_predictions]
 
         confusion_matrix = sklearn.metrics.confusion_matrix(
             answers, numpy.argmax(predictions, axis=1), labels=numpy.arange(len(cell_types)))

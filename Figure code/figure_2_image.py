@@ -106,7 +106,7 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint):
         # Calculate the desired color
         color = numpy.array([probabilities[cell_types.index("PANETH")],
             probabilities[cell_types.index("STEM")],
-            probabilities[cell_types.index("OTHER_DIFFERENTIATED")]])
+            probabilities[cell_types.index("ENTEROCYTE")]])
 
         # Color the target image by the calculated color
         for i in range(len(color)):
