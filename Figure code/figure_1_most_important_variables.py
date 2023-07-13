@@ -14,7 +14,9 @@ import figure_lib
 
 INPUT_FILE = "../../Data/all_data.h5ad"
 NUMBER_OF_GENES = 6
-COLORMAP = LinearSegmentedColormap.from_list("custom", ["#12662E", "#136D31", "#157536", "#17803C", "#48AE60", "#F6FCF4"])
+COLORMAP = LinearSegmentedColormap.from_list("custom",
+                                             ["#12662E", "#136D31", "#157536", "#17803C", "#48AE60", "#F6FCF4"])
+
 
 def main():
     adata = scanpy.read_h5ad(INPUT_FILE)
@@ -32,10 +34,11 @@ def main():
                        .replace("minor\naxis", "minor axis")
                        .replace("major\naxis", "major axis")
                        for var_name in adata.var_names]
-    adata.obs["cell_type_training"] = [figure_lib.style_cell_type_name(cell_type) for cell_type in adata.obs["cell_type_training"]]
+    adata.obs["cell_type_training"] = [figure_lib.style_cell_type_name(cell_type) for cell_type in
+                                       adata.obs["cell_type_training"]]
 
     scanpy.tools.rank_genes_groups(adata, 'cell_type_training', method='wilcoxon')
-    #scanpy.plotting.rank_genes_groups(adata, n_genes=25, sharey=False)
+    # scanpy.plotting.rank_genes_groups(adata, n_genes=25, sharey=False)
 
     cell_types = list(adata.obs["cell_type_training"].array.categories)
 
@@ -48,17 +51,14 @@ def main():
         name_table[:, i] = gene_names
         score_table[:, i] = scores
 
-
     plot(figure_lib.new_figure(size=(6, 2.6)), cell_types, name_table, score_table)
     plt.show()
 
 
-
 def plot(figure: Figure, cell_types: List[str], name_table: ndarray, score_table: ndarray):
     ax = figure.gca()
-    image = ax.imshow(score_table, aspect=1/2, cmap=COLORMAP,
+    image = ax.imshow(score_table, aspect=1 / 2, cmap=COLORMAP,
                       norm=matplotlib.colors.LogNorm(vmin=score_table.min(), vmax=0.1))
-
     ax.set_yticks([])
     ax.set_xticks(list(range(len(cell_types))))
     ax.set_xticklabels(cell_types)
