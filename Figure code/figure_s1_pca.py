@@ -20,7 +20,7 @@ def main():
     scanpy.tools.pca(adata, svd_solver='arpack')
 
     # Plot the PCA
-    figure = figure_lib.new_figure(size=(3.5,2.5))
+    figure = figure_lib.new_figure(size=(3.5, 2.5))
     ax = figure.gca()
     scanpy.plotting.pca(adata, ax=ax, annotate_var_explained=True, color="cell_type_training",
                         palette=figure_lib.CELL_TYPE_PALETTE, show=False, s=35, alpha=0.5)

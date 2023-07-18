@@ -1,7 +1,7 @@
 # We follow the evaluation method of CellPose, so on the X-axis IoU from 0.5 to 1, and on the y axis average precision.
 
 import os
-from typing import Tuple, List, Optional, Iterable, Dict, NamedTuple
+from typing import Tuple, List, Optional, Iterable, NamedTuple
 
 import numpy
 import skimage.measure

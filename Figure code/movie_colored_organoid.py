@@ -3,7 +3,6 @@ from typing import Optional, List
 import numpy
 import scipy
 import tifffile
-from matplotlib import pyplot as plt
 from numpy import ndarray
 import skimage.segmentation
 import skimage.measure
@@ -12,8 +11,7 @@ from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.position import Position
-from organoid_tracker.imaging import io, list_io
-import figure_lib
+from organoid_tracker.imaging import list_io
 from organoid_tracker.linking import nearby_position_finder
 
 _LIST_FILE = "../../Data/Predicted data (automatic).autlist"

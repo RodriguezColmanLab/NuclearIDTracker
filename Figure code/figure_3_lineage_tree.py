@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from numpy import ndarray
 
-import figure_lib
+import lib_figures
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
@@ -14,14 +14,16 @@ from organoid_tracker.linking_analysis.lineage_drawing import LineageDrawing
 
 _DATA_FILE = "../../Data/Predicted data.autlist"
 _EXPERIMENT_NAME = "x20190926pos01"
-
+_PLOTTED_LINEAGE_TREES = [Position(192.02, 299.39, 5, time_point_number=1)]#,  # Both absorptive and secretory cells
+                          #Position(145.97, 333.90, 16, time_point_number=1),
+                        #Position(203.45, 349.31, 12, time_point_number=1)]
 
 def main():
     plt.rcParams['savefig.dpi'] = 180
 
     experiments = list_io.load_experiment_list_file(_DATA_FILE)
 
-    figure = figure_lib.new_figure()
+    figure = lib_figures.new_figure()
     ax = figure.gca()
     for experiment in experiments:
         if experiment.name.get_name() == _EXPERIMENT_NAME:
@@ -69,15 +71,10 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
     stem_index = cell_type_names.index("STEM")
     paneth_index = cell_type_names.index("PANETH")
     enterocyte_index = cell_type_names.index("ENTEROCYTE")
-    min_probabilities, max_probabilities = figure_lib.get_min_max_chance_per_cell_type(experiment)
+    min_probabilities, max_probabilities = lib_figures.get_min_max_chance_per_cell_type(experiment)
 
     def filter_lineages(starting_track: LinkingTrack):
-        min_time_point_number = starting_track.min_time_point_number()
-        max_time_point_number = starting_track.max_time_point_number()
-        for track in starting_track.find_all_descending_tracks():
-            max_time_point_number = max(track.max_time_point_number(), max_time_point_number)
-        return min_time_point_number == experiment.positions.first_time_point_number() \
-            and max_time_point_number == experiment.positions.last_time_point_number()
+        return starting_track.find_first_position() in _PLOTTED_LINEAGE_TREES
 
     def color_position(time_point_number: int, track: LinkingTrack) -> MPLColor:
         position = track.find_position_at_time_point_number(time_point_number)

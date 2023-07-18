@@ -6,6 +6,7 @@ import pandas
 from anndata import AnnData
 from numpy import ndarray
 
+import lib_data
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.position import Position
 from organoid_tracker.core.position_data import PositionData
@@ -33,31 +34,6 @@ def _convert_cell_type(position_type: Optional[str]) -> str:
     return "NONE"
 
 
-def _get_data_array(position_data: PositionData, position: Position) -> Optional[ndarray]:
-    array = numpy.empty(len(_METADATA_NAMES), dtype=numpy.float32)
-    for i, name in enumerate(_METADATA_NAMES):
-        value = None
-        if name == "sphericity":
-            # Special case, we need to calculate
-            volume = position_data.get_position_data(position, "volume_um3")
-            surface = position_data.get_position_data(position, "surface_um2")
-            if volume is not None and surface is not None:
-                value = math.pi ** (1/3) * (6 * volume) ** (2/3) / surface
-        else:
-            # Otherwise, just look up
-            value = position_data.get_position_data(position, name)
-
-        if value is None:
-            return None  # Abort, a value is missing
-
-        if name in {"neighbor_distance_variation", "solidity", "sphericity", "ellipticity", "intensity_factor"}\
-                or name.endswith("_local"):
-            # Ratios should be an exponential, as the analysis will log-transform the data
-            value = math.exp(value)
-
-        array[i] = value
-    return array
-
 def main():
     data_array = list()
     cell_type_list = list()
@@ -75,7 +51,7 @@ def main():
                        TimePoint(last_time_point_number - 10), TimePoint(last_time_point_number - 15)]
         for time_point in time_points:
             for position in experiment.positions.of_time_point(time_point):
-                position_data_array = _get_data_array(position_data, position)
+                position_data_array = lib_data.get_data_array(position_data, position, _METADATA_NAMES)
                 cell_type = position_data.get_position_data(position, "type")
                 cell_type_training = _convert_cell_type(cell_type)
                 if position_data_array is not None and cell_type is not None:

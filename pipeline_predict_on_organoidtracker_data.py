@@ -5,6 +5,7 @@ from typing import Optional, List
 import numpy
 from numpy import ndarray
 
+import lib_data
 import lib_models
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
@@ -30,7 +31,7 @@ def predict_organoid(experiment: Experiment):
     positions_corresponding_to_data_array = list()
     i = 0
     for position in experiment.positions:
-        data_array = _get_data_array(experiment.position_data, position, input_names)
+        data_array = lib_data.get_data_array(experiment.position_data, position, input_names)
         if data_array is not None:
             data_arrays[i] = data_array
             positions_corresponding_to_data_array.append(position)
@@ -48,31 +49,6 @@ def predict_organoid(experiment: Experiment):
         cell_type = cell_types[numpy.argmax(probability_by_cell_type)]
         position_markers.set_position_type(experiment.position_data, position, cell_type)
 
-
-def _get_data_array(position_data: PositionData, position: Position, input_names: List[str]) -> Optional[ndarray]:
-    array = numpy.empty(len(input_names), dtype=numpy.float32)
-    for i, name in enumerate(input_names):
-        value = None
-        if name == "sphericity":
-            # Special case, we need to calculate
-            volume = position_data.get_position_data(position, "volume_um3")
-            surface = position_data.get_position_data(position, "surface_um2")
-            if volume is not None and surface is not None:
-                value = math.pi ** (1/3) * (6 * volume) ** (2/3) / surface
-        else:
-            # Otherwise, just look up
-            value = position_data.get_position_data(position, name)
-
-        if value is None:
-            return None  # Abort, a value is missing
-
-        if name in {"neighbor_distance_variation", "solidity", "sphericity", "ellipticity", "intensity_factor"}\
-                or name.endswith("_local"):
-            # Ratios should be an exponential, as the analysis will log-transform the data
-            value = math.exp(value)
-
-        array[i] = value
-    return array
 
 
 def main():
