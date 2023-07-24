@@ -26,18 +26,22 @@ LDA_FILE = "../../Data/all_data.h5ad"
 
 _DATA_FILE = "../../Data/Predicted data.autlist"
 _EXPERIMENT_NAME = "x20190926pos01"
-_PLOTTED_LINEAGE_TREES = [Position(192.02, 299.39, 5, time_point_number=1)]
+
+# Must be the last position in time, as we iterate back
+_PLOTTED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
+                      Position(125.56, 294.27, 12.00, time_point_number=331),
+                      Position(234.63, 343.08, 8.00, time_point_number=331)]
 _WINDOW_HALF_WIDTH_TIME_POINTS = 20
-_TIME_COLORMAP = matplotlib.colors.LinearSegmentedColormap.from_list("dark_gray", ["#000000", "#666666"])
+
 
 class _Line(NamedTuple):
     x_values: ndarray
     y_values: ndarray
     time_h: ndarray
-    names: List[str]
+    label: int
 
     def resample_5h(self) -> "_Line":
-        indices = (self.time_h / 7.5).astype(numpy.int32)
+        indices = (self.time_h / 5).astype(numpy.int32)
 
         x_values_new = list()
         y_values_new = list()
@@ -61,7 +65,7 @@ class _Line(NamedTuple):
             x_values=numpy.array(x_values_new),
             y_values=numpy.array(y_values_new),
             time_h=numpy.array(time_h_new),
-            names=self.names)
+            label=self.label)
 
 
 def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
@@ -77,7 +81,7 @@ def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
         r, g, b = new_r, new_g, new_b
 
         # Make brighter
-        adder = 0.5
+        adder = 0.5 if numpy.mean([r, g, b]) < 0.5 else 0.2
         r = min(1, r + adder)
         g = min(1, g + adder)
         b = min(1, b + adder)
@@ -94,11 +98,11 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
     input_names = list(adata.var_names)
     resolution = experiment.images.resolution()
 
-    for starting_track in experiment.links.find_starting_tracks():
-        if starting_track.find_first_position() not in _PLOTTED_LINEAGE_TREES:
-            continue
-
-        for track in starting_track.find_all_descending_tracks(include_self=True):
+    for i, position in enumerate(_PLOTTED_POSITIONS):
+        ending_track = experiment.links.get_track(position)
+        if ending_track is None:
+            raise ValueError(f"Position {position} has no track")
+        for track in ending_track.find_all_previous_tracks(include_self=True):
             if len(track.get_next_tracks()) > 0:
                 continue  # Only iterate over ending tracks
 
@@ -127,7 +131,7 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
             plot_coords = lda.transform(adata_track.X)
             trajectories.append(_Line(plot_coords[:, 0], plot_coords[:, 1],
                                       numpy.array(adata_track.obs["time_h"]),
-                                      list(adata_track.obs_names))
+                                      i + 1)
                                 .resample_5h())
 
 
@@ -157,9 +161,18 @@ def main():
     ax: Axes = figure.gca()
     _plot_lda(ax, lda, adata)
     for line in trajectories:
-        colors = _TIME_COLORMAP(line.time_h / line.time_h.max())
-        mpl_helper.plot_multicolor(ax, line.x_values, line.y_values, colors=colors, linewidth=1)
+        # Plot a line
+        ax.plot(line.x_values, line.y_values, color="#636e72", linewidth=1)
+        # Plot dots along the line
+        ax.scatter(line.x_values[:-1], line.y_values[:-1], color="#636e72", s=6, zorder=4)
+        # Except for the last dot, where we plot an arrow
+        ax.arrow(line.x_values[-2], line.y_values[-2],
+                 (line.x_values[-1] - line.x_values[-2]),
+                 (line.y_values[-1] - line.y_values[-2]),
+                 head_width=0.5, head_length=0.7, width=0.01, linewidth=0, color="black", zorder=5)
+        ax.text(line.x_values[-1], line.y_values[-1], str(line.label))
 
+    ax.set_aspect(1)
     plt.show()
 
 

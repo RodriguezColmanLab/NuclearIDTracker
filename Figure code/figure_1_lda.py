@@ -1,5 +1,6 @@
 import math
 
+import numpy
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
@@ -29,7 +30,7 @@ def main():
     figure = lib_figures.new_figure(size=(3.5, 2.5))
     ax: Axes = figure.gca()
     ax.scatter(plot_coords[:, 0], plot_coords[:, 1],
-               alpha=0.8, s=15, lw=0,
+               alpha=0.8, s=12, lw=0,
                color=[lib_figures.CELL_TYPE_PALETTE[adata.obs["cell_type_training"][i]] for i in
                       range(len(adata.obs["cell_type_training"]))])
     used_cell_types = adata.obs["cell_type_training"].array.categories
@@ -39,10 +40,13 @@ def main():
         Line2D([0], [0], marker='o', alpha=0.8,
                color=lib_figures.CELL_TYPE_PALETTE[cell_type],
                label=lib_figures.style_cell_type_name(cell_type),
-               markersize=math.sqrt(15), lw=0)
+               markersize=math.sqrt(12), lw=0)
         for cell_type in used_cell_types],
         loc='center left', bbox_to_anchor=(1, 0.5)
     )
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
     plt.show()
 
 
