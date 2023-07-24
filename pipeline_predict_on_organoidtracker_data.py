@@ -13,7 +13,7 @@ from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io, io
 from organoid_tracker.position_analysis import position_markers
 
-_MODEL_FOLDER = r"../Data/Models/epochs-1-neurons-0"
+_MODEL_FOLDER = r"../Data/Models/random-forest-with-100-trees"
 _INPUT_FILE = "../Data/Training data.autlist"
 _OUTPUT_FOLDER = "../Data/Cell tracks with predicted types"
 
