@@ -9,7 +9,7 @@ import tifffile
 from matplotlib import pyplot as plt
 from numpy import ndarray
 
-import figure_lib
+import lib_figures
 
 _GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
 _AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\CellPose segmentation"
@@ -31,9 +31,9 @@ class _GroundTruthImage:
 
     def _get_overlapping_bounding_box(self, bounding_box: Tuple[int, int, int, int, int, int]) -> List[int]:
         overlapping = (bounding_box[5] >= self._bboxes_zyx_zyx[:, 2]) & (
-                    self._bboxes_zyx_zyx[:, 5] >= bounding_box[2]) & \
+                self._bboxes_zyx_zyx[:, 5] >= bounding_box[2]) & \
                       (bounding_box[4] >= self._bboxes_zyx_zyx[:, 1]) & (
-                                  self._bboxes_zyx_zyx[:, 4] >= bounding_box[1]) & \
+                              self._bboxes_zyx_zyx[:, 4] >= bounding_box[1]) & \
                       (bounding_box[3] >= self._bboxes_zyx_zyx[:, 0]) & (self._bboxes_zyx_zyx[:, 3] >= bounding_box[0])
         return list(numpy.nonzero(overlapping)[0])
 
@@ -93,7 +93,8 @@ class _ImageResults:
     positives and false negatives."""
     _ground_truth_nuclei_to_z: Dict[int, float]
     _overlaps: List[
-        Tuple[Optional[int], int, float, float]]  # Ground truth nucleus id, predicted nucleus id, intersection over union
+        Tuple[
+            Optional[int], int, float, float]]  # Ground truth nucleus id, predicted nucleus id, intersection over union
 
     def __init__(self, ground_truth_nuclei_to_z: Dict[int, float]):
         self._ground_truth_nuclei_to_z = ground_truth_nuclei_to_z
@@ -149,8 +150,10 @@ class _OverallResults:
         self._results.append(results)
 
     def precision(self, *, iou_cutoff: float, z_cutoff: float = float("inf")) -> float:
-        true_positives = sum([result.true_positives(iou_cutoff=iou_cutoff, z_cutoff=z_cutoff) for result in self._results])
-        false_positives = sum([result.false_positives(iou_cutoff=iou_cutoff, z_cutoff=z_cutoff) for result in self._results])
+        true_positives = sum(
+            [result.true_positives(iou_cutoff=iou_cutoff, z_cutoff=z_cutoff) for result in self._results])
+        false_positives = sum(
+            [result.false_positives(iou_cutoff=iou_cutoff, z_cutoff=z_cutoff) for result in self._results])
         return true_positives / (true_positives + false_positives)
 
     def recall(self, *, iou_cutoff: float, z_cutoff: float = float("inf")) -> float:
@@ -202,7 +205,7 @@ def _plot_by_z(results: _OverallResults):
     z_values_px = numpy.linspace(5, 30)
     precisions = [results.precision(iou_cutoff=0.5, z_cutoff=z_px) for z_px in z_values_px]
     recalls = [results.recall(iou_cutoff=0.5, z_cutoff=z_px) for z_px in z_values_px]
-    figure = figure_lib.new_figure()
+    figure = lib_figures.new_figure()
     ax = figure.gca()
     ax.plot(z_values_px, precisions, label="Precision")
     ax.plot(z_values_px, recalls, label="Recall")
@@ -215,7 +218,7 @@ def _plot_by_ioc_cutoff(results: _OverallResults):
     iou_cutoffs = numpy.linspace(0, 1)
     precisions = [results.precision(iou_cutoff=iou_cutoff) for iou_cutoff in iou_cutoffs]
     recalls = [results.recall(iou_cutoff=iou_cutoff) for iou_cutoff in iou_cutoffs]
-    figure = figure_lib.new_figure()
+    figure = lib_figures.new_figure()
     ax = figure.gca()
     ax.plot(iou_cutoffs, precisions, label="Precision")
     ax.plot(iou_cutoffs, recalls, label="Recall")

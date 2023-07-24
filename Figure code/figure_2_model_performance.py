@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from numpy import ndarray
 from sklearn.model_selection import KFold
 from lib_models import build_shallow_model, ModelInputOutput
-import figure_lib
+import lib_figures
 
 _NUM_FOLDS = 5
 _TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
@@ -50,7 +50,7 @@ def main():
     cell_types, results = _evaluate_model()
     confusion_matrix = results.confusion_matrix
 
-    cell_types = [figure_lib.style_cell_type_name(name) for name in cell_types]
+    cell_types = [lib_figures.style_cell_type_name(name) for name in cell_types]
 
     fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
 
@@ -59,7 +59,7 @@ def main():
         scaled_matrix[i] /= scaled_matrix[i].sum()
     max_scaled_value = scaled_matrix.max()
 
-    figure = figure_lib.new_figure(size=(4, 3))
+    figure = lib_figures.new_figure(size=(4, 3))
     ax = figure.gca()
     ax.imshow(scaled_matrix, cmap="Oranges")
     for i in range(confusion_matrix.shape[0]):
