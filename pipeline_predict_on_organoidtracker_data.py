@@ -1,22 +1,20 @@
-import math
 import os
-from typing import Optional, List
 
 import numpy
-from numpy import ndarray
 
 import lib_data
 import lib_models
 from organoid_tracker.core.experiment import Experiment
-from organoid_tracker.core.position import Position
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io, io
 from organoid_tracker.position_analysis import position_markers
 
-_MODEL_FOLDER = r"../Data/Models/random-forest-with-100-trees"
+_MODEL_FOLDER = r"../Data/Models/epochs-1-neurons-0"
 _INPUT_FILE = "../Data/Training data.autlist"
 _OUTPUT_FOLDER = "../Data/Cell tracks with predicted types"
 
+# For filtering out missegmentations
+_MIN_VOLUME_UM3 = 60
+_MAX_VOLUME_UM3 = 300
 
 def predict_organoid(experiment: Experiment):
     # Delete existing cell types
@@ -25,6 +23,7 @@ def predict_organoid(experiment: Experiment):
     # Load the model
     model = lib_models.load_model(_MODEL_FOLDER)
     input_names = model.get_input_output().input_mapping
+    volume_index = input_names.index("volume_um3")
 
     # Construct data arrays in the desired format
     data_arrays = numpy.zeros((len(experiment.positions), len(input_names)))
@@ -32,10 +31,15 @@ def predict_organoid(experiment: Experiment):
     i = 0
     for position in experiment.positions:
         data_array = lib_data.get_data_array(experiment.position_data, position, input_names)
-        if data_array is not None:
-            data_arrays[i] = data_array
-            positions_corresponding_to_data_array.append(position)
-            i += 1
+        if data_array is None:
+            continue
+        volume_um3 = data_array[volume_index]
+        if volume_um3 < _MIN_VOLUME_UM3 or volume_um3 > _MAX_VOLUME_UM3:
+            continue  # Segmentation fail
+
+        data_arrays[i] = data_array
+        positions_corresponding_to_data_array.append(position)
+        i += 1
     data_arrays = data_arrays[0:i]
 
     # Apply the model
