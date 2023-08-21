@@ -9,8 +9,8 @@ from organoid_tracker.imaging import list_io, io
 from organoid_tracker.position_analysis import position_markers
 
 _MODEL_FOLDER = r"../Data/Models/epochs-1-neurons-0"
-_INPUT_FILE = "../Data/Training data.autlist"
-_OUTPUT_FOLDER = "../Data/Cell tracks with predicted types"
+_INPUT_FILE = "../Data/Testing data - input - treatments.autlist"
+_OUTPUT_FOLDER = "../Data/Testing data - output - treatments"
 
 # For filtering out missegmentations
 _MIN_VOLUME_UM3 = 60

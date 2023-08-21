@@ -23,7 +23,7 @@ def get_data_array(position_data: PositionData, position: Position, input_names:
             # Otherwise, just look up
             value = position_data.get_position_data(position, name)
 
-        if value is None:
+        if value is None or value == 0:
             return None  # Abort, a value is missing
 
         if name in {"neighbor_distance_variation", "solidity", "sphericity", "ellipticity", "intensity_factor"}\

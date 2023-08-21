@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from typing import Tuple, List
 
 import numpy
@@ -12,7 +13,7 @@ from organoid_tracker.position_analysis import intensity_calculator
 
 _EXPERIMENTS_FILE = "../../Data/Testing data - output - CD24.autlist"
 _CD24_AVERAGING_WINDOW_H = 4
-_TIME_OFFSET_H = 0
+_TIME_OFFSET_H = 15
 
 
 def main():
@@ -79,9 +80,6 @@ def _get_intensity_against_paneth_chance(experiments: List[Experiment], *,
                 if cell_probabilities is None:
                     continue
                 panethness = cell_probabilities[paneth_index]
-
-                if show_debug and cd24_signal.mean > 0.8:
-                    print(experiment.name, position)
 
 
                 cd24_values.append(cd24_signal.mean)
