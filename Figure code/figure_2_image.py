@@ -12,7 +12,7 @@ from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
-import figure_lib
+import lib_figures
 from organoid_tracker.linking import nearby_position_finder
 
 _LIST_FILE = "../../Data/Predicted data.autlist"
@@ -47,7 +47,7 @@ def main():
         image = image_colored * image_nuclei
         image = image[_Y_MIN:_Y_MAX, _X_MIN:_X_MAX]
 
-        figure = figure_lib.new_figure()
+        figure = lib_figures.new_figure()
         ax = figure.gca()
         ax.imshow(image, cmap="gray")
         ax.set_xticks([])

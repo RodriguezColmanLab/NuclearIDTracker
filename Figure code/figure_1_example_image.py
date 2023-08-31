@@ -4,7 +4,7 @@ from matplotlib.axes import Axes
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.imaging import list_io
-import figure_lib
+import lib_figures
 
 _INPUT_FILE = r"../../Data/Training data.autlist"
 
@@ -24,7 +24,7 @@ def main():
 
         image = image_stack.mean(axis=0) + image_stack.max(axis=0) * 0.25
 
-        figure = figure_lib.new_figure()
+        figure = lib_figures.new_figure()
         ax: Axes = figure.gca()
         ax.imshow(image[290:460,70:335], cmap="gray")
         ax.set_axis_off()
