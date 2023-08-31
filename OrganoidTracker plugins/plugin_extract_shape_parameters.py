@@ -9,7 +9,7 @@ import skimage.morphology
 import skimage.segmentation
 from numpy import ndarray
 
-from organoid_tracker.core import TimePoint
+from organoid_tracker.core import TimePoint, max_none
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.images import Image
@@ -132,9 +132,8 @@ def get_menu_items(window: Window):
 
 
 def _extract_segmentation_parameters(window: Window):
-    result = dialog.prompt_options("Extracting segmentation parameters", "Please make sure that you have the channel" +
-             " with the segmentation masks selected (so not the nuclear fluorescence).\n\n"
-             "Do you want to extract parameters of nuclei bordering the image? (Not recommended for training data.)",
+    result = dialog.prompt_options("Extracting segmentation parameters", "Do you want to extract parameters of nuclei"
+                                   " bordering the image? (Not recommended for training data.)",
                                    option_1="Segment", option_2="Segment (keep bordering)")
     if result is None:
         return
@@ -142,25 +141,43 @@ def _extract_segmentation_parameters(window: Window):
 
     # Start!
     open_tabs = window.get_gui_experiment().get_active_tabs()
-    window.get_scheduler().add_task(_AnalyzeShapesTask(open_tabs, window.display_settings.image_channel, remove_bordering))
+    max_channel = max_none([len(tab.experiment.images.get_channels()) for tab in open_tabs])
+    if max_channel is None:
+        return
+    nucleus_channel_index = dialog.prompt_int("Nucleus channel", "Which channel is the nucleus channel? (The"
+                                              " fluorescence, not the segmentation.)",
+                                              minimum=1, maximum=max_channel, default=1)
+    if nucleus_channel_index is None:
+        return
+    segmentation_channel_index = dialog.prompt_int("Segmentation channel", "Which channel contains the segmented nuclei?",
+                                              minimum=1, maximum=max_channel, default=max_channel)
+    if segmentation_channel_index is None:
+        return
+
+    window.get_scheduler().add_task(_AnalyzeShapesTask(open_tabs, ImageChannel(index_zero=segmentation_channel_index - 1),
+                                                       ImageChannel(index_zero=nucleus_channel_index - 1), remove_bordering))
 
 
 class _AnalyzeShapesTask(Task):
     _open_tabs: List[SingleGuiTab]
     _experiment_copies: List[Experiment]
     _segmentation_channel: ImageChannel
+    _nucleus_channel: ImageChannel
     _remove_bordering: bool
 
-    def __init__(self, open_tabs: List[SingleGuiTab], segmentation_channel: ImageChannel, remove_bordering: bool):
+    def __init__(self, open_tabs: List[SingleGuiTab], segmentation_channel: ImageChannel, nucleus_channel: ImageChannel,
+                 remove_bordering: bool):
         self._open_tabs = open_tabs
         self._experiment_copies = [
             open_tab.experiment.copy_selected(positions=True, links=True, connections=True, images=True)
             for open_tab in open_tabs]
         self._segmentation_channel = segmentation_channel
+        self._nucleus_channel = nucleus_channel
         self._remove_bordering = remove_bordering
 
     def compute(self) -> List[PositionData]:
-        return [_analyze_shapes(experiment_copy, self._segmentation_channel, self._remove_bordering) for experiment_copy in
+        return [_analyze_shapes(experiment_copy, self._segmentation_channel, self._nucleus_channel,
+                                self._remove_bordering) for experiment_copy in
                 self._experiment_copies]
 
     def on_finished(self, results: List[PositionData]):
@@ -175,7 +192,8 @@ class _AnalyzeShapesTask(Task):
         dialog.popup_message("Extraction finished", "Stored all the metadata of the positions.")
 
 
-def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, remove_bordering: bool = True) -> PositionData:
+def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, nucleus_channel: ImageChannel,
+                    remove_bordering: bool = True) -> PositionData:
     """Measures on the experiment."""
     resolution = experiment.images.resolution()
     results = PositionData()
@@ -184,7 +202,7 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, 
     for time_point in experiment.images.time_points():
         print(f"Working on time point {time_point.time_point_number()}...")
         segmented_image = experiment.images.get_image(time_point, segmentation_channel)
-        nuclei_image = experiment.images.get_image(time_point)  # TODO allow selection of nucleus channel
+        nuclei_image = experiment.images.get_image(time_point, nucleus_channel)
         if segmented_image is None or nuclei_image is None:
             continue
 
