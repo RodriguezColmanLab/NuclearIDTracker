@@ -9,13 +9,8 @@ from organoid_tracker.imaging import list_io, io
 from organoid_tracker.position_analysis import position_markers
 
 _MODEL_FOLDER = r"../Data/Models/epochs-1-neurons-0"
-_INPUT_FILE = "../Data/Testing data - input - CD24 and Lgr5.autlist"
-_OUTPUT_FOLDER = "../Data/Testing data - output - CD24 and Lgr5"
-
-# For filtering out missegmentations
-_MIN_VOLUME_UM3 = 40
-_MAX_VOLUME_UM3 = 1000
-
+_INPUT_FILE = "../Data/Testing data - input - treatments.autlist"
+_OUTPUT_FOLDER = "../Data/Testing data - output - treatments"
 
 def predict_organoid(experiment: Experiment):
     # Delete existing cell types
@@ -24,7 +19,6 @@ def predict_organoid(experiment: Experiment):
     # Load the model
     model = lib_models.load_model(_MODEL_FOLDER)
     input_names = model.get_input_output().input_mapping
-    volume_index = input_names.index("volume_um3")
 
     # Construct data arrays in the desired format
     data_arrays = numpy.zeros((len(experiment.positions), len(input_names)))
@@ -34,9 +28,6 @@ def predict_organoid(experiment: Experiment):
         data_array = lib_data.get_data_array(experiment.position_data, position, input_names)
         if data_array is None:
             continue
-        volume_um3 = data_array[volume_index]
-        if volume_um3 < _MIN_VOLUME_UM3 or volume_um3 > _MAX_VOLUME_UM3:
-            continue  # Segmentation fail
 
         data_arrays[i] = data_array
         positions_corresponding_to_data_array.append(position)

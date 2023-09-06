@@ -111,8 +111,11 @@ class _LinearModel(OurModel):
             pickle.dump(self._logistic_regression, handle)
 
     def predict(self, x_values: ndarray) -> ndarray:
+        # Scale and clip the input array
+        x_values = numpy.clip(self._scaler.transform(x_values), -3, 3)
+
         # Do the prediction, obtaining logits
-        probabilities = self._logistic_regression.decision_function(self._scaler.transform(x_values))
+        probabilities = self._logistic_regression.decision_function(x_values)
 
         # Convert from logit to probabilities
         scipy.special.expit(probabilities, out=probabilities)
