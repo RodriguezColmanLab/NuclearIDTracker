@@ -11,7 +11,7 @@ def get_menu_items(window: Window) -> Dict[str, Any]:
         "Edit//Types-Predicted types//Average the cell types": lambda: _average_cell_types(window),
         "Edit//Types-Predicted types//Viterbi the cell types...": lambda: _viterbi_cell_types(window),
         "Edit//Types-Predicted types//Back to original cell types": lambda: _unaverage_cell_types(window),
-        "View//Analyze-Cell type probabilities...": lambda: _show_probabilities(window)
+        "View//Types-Cell type probabilities...": lambda: _show_probabilities(window)
     }
 
 

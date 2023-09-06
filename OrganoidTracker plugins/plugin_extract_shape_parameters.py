@@ -1,6 +1,6 @@
 import math
 from enum import Enum, auto
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy
 import scipy.ndimage
@@ -17,8 +17,8 @@ from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
 from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.core.resolution import ImageResolution
-from organoid_tracker.gui import dialog, action
-from organoid_tracker.gui.gui_experiment import GuiExperiment, SingleGuiTab
+from organoid_tracker.gui import dialog
+from organoid_tracker.gui.gui_experiment import SingleGuiTab
 from organoid_tracker.gui.threading import Task
 from organoid_tracker.gui.window import Window
 from organoid_tracker.util.moving_average import MovingAverage
