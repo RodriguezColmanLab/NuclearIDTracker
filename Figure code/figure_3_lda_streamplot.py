@@ -1,11 +1,13 @@
 import math
-from typing import Dict, List, NamedTuple
+from typing import Dict, NamedTuple
 
 import matplotlib.colors
 import numpy
+import numpy as np
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
+import tifffile
 from anndata import AnnData
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
@@ -16,53 +18,91 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 import lib_data
 import lib_figures
 from organoid_tracker.core.experiment import Experiment
-from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 
 LDA_FILE = "../../Data/all_data.h5ad"
 
 _DATA_FILE = "../../Data/Predicted data.autlist"
 _EXPERIMENT_NAME = "x20190926pos01"
+# x20190926pos01 (first one we tried), x20190817pos01, x20200614pos10
 
-# Must be the last position in time, as we iterate back
-_PLOTTED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
-                      Position(125.56, 294.27, 12.00, time_point_number=331),
-                      Position(234.63, 343.08, 8.00, time_point_number=331)]
-_WINDOW_HALF_WIDTH_TIME_POINTS = 20
-
-
-class _Line(NamedTuple):
+class _Trajectory(NamedTuple):
     x_values: ndarray
     y_values: ndarray
     time_h: ndarray
-    label: int
 
-    def resample_5h(self) -> "_Line":
+    def resample_5h(self) -> "_Trajectory":
         indices = (self.time_h / 5).astype(numpy.int32)
 
         x_values_new = list()
         y_values_new = list()
         time_h_new = list()
-        names_new = list()
         for i in range(indices.max() + 1):
+            if len(self.time_h[indices == i]) == 0:
+                continue  # No values for that time period
             x_values_new.append(self.x_values[indices == i].mean())
             y_values_new.append(self.y_values[indices == i].mean())
-            time_h_new.append(self.time_h[indices == i].min())
-            names_new.append("")
+            time_h_new.append(int(self.time_h[indices == i][0] / 5) * 5)
 
-        # # Spline interpolation
-        # k = 3 if len(x_values_new) > 3 else 1
-        # spline, _ = scipy.interpolate.splprep([x_values_new, y_values_new], k=k)
-        # points = scipy.interpolate.splev(numpy.arange(0, 1.01, 0.05), spline)
-        # x_values_new = points[0]
-        # y_values_new = points[1]
-        # time_h_new = [1] * len(y_values_new)
-
-        return _Line(
+        return _Trajectory(
             x_values=numpy.array(x_values_new),
             y_values=numpy.array(y_values_new),
-            time_h=numpy.array(time_h_new),
-            label=self.label)
+            time_h=numpy.array(time_h_new))
+
+
+class _Streamplot:
+
+    _x_coords: ndarray
+    _y_coords: ndarray
+    _dx_sums: ndarray
+    _dy_sums: ndarray
+    _counts: ndarray
+
+    _half_width: float
+    _count: int
+
+    def __init__(self):
+        self._half_width = 5
+        self._count = 30
+        self._x_coords, self._y_coords = numpy.meshgrid(
+            numpy.linspace(-self._half_width, self._half_width, self._count),
+            numpy.linspace(-self._half_width, self._half_width, self._count))
+        self._dx_sums = numpy.zeros_like(self._x_coords)
+        self._dy_sums = numpy.zeros_like(self._x_coords)
+        self._counts = numpy.zeros_like(self._x_coords)
+
+    def add_trajectory(self, trajectory: _Trajectory):
+        for i in range(1, len(trajectory.x_values)):
+            x_start, y_start = trajectory.x_values[i - 1], trajectory.y_values[i - 1]
+            x_offset = x_start + self._half_width  # So -3 becomes 0
+            y_offset = y_start + self._half_width
+            x_coord = int(x_offset / (2 * self._half_width) * self._count)
+            y_coord = int((1 - y_offset / (2 * self._half_width)) * self._count)
+            if x_coord < 0 or x_coord >= self._count or y_coord < 0 or y_coord >= self._count:
+                continue
+
+            dx = trajectory.x_values[i] - x_start
+            dy = trajectory.y_values[i] - y_start
+            dt = trajectory.time_h[i] - trajectory.time_h[i - 1]
+            if y_coord == 20 and x_coord == 14:
+                print(dx, dy, dt)
+            self._dx_sums[y_coord, x_coord] += dx / dt
+            self._dy_sums[y_coord, x_coord] += dy / dt
+            self._counts[y_coord, x_coord] += 1
+
+    def plot(self, ax: Axes):
+        # Calculate speeds
+        dx_values = self._dx_sums / numpy.clip(self._counts, 1, None)
+        dy_values = self._dy_sums / numpy.clip(self._counts, 1, None)
+
+        tifffile.imwrite("E:/Scratch/counts.tif", self._counts)
+        tifffile.imwrite("E:/Scratch/dx_values.tif", dx_values)
+        tifffile.imwrite("E:/Scratch/dy_values.tif", dy_values)
+
+        counts_sqrt = np.sqrt(self._counts)
+        lw = 2 * counts_sqrt / counts_sqrt.max()
+        return ax.streamplot(self._x_coords, self._y_coords, dx_values, dy_values, density=0.75, color="black",
+                             linewidth=lw, broken_streamlines=False)
 
 
 def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
@@ -90,20 +130,15 @@ def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
     ])
 
 
-def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDiscriminantAnalysis,
-                          trajectories: List[_Line]):
+def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDiscriminantAnalysis, streamplot: _Streamplot):
     input_names = list(adata.var_names)
     resolution = experiment.images.resolution()
 
-    for i, position in enumerate(_PLOTTED_POSITIONS):
-        ending_track = experiment.links.get_track(position)
-        if ending_track is None:
-            raise ValueError(f"Position {position} has no track")
-
+    for track in experiment.links.find_ending_tracks():
         all_position_data = list()
         position_names = list()
         time_h = list()
-        for position in experiment.links.iterate_to_past(ending_track.find_last_position()):
+        for position in track.positions(connect_to_previous_track=True):
             data_array = lib_data.get_data_array(experiment.position_data, position, input_names)
             if data_array is not None and not numpy.any(numpy.isnan(data_array)):
                 all_position_data.append(data_array)
@@ -123,10 +158,9 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
         adata_track.X /= numpy.array(adata.var["std"])
 
         plot_coords = lda.transform(adata_track.X)
-        trajectories.append(_Line(plot_coords[:, 0], plot_coords[:, 1],
-                                  numpy.array(adata_track.obs["time_h"]),
-                                  i + 1)
-                            .resample_5h())
+        trajectory = _Trajectory(plot_coords[:, 0], plot_coords[:, 1],
+                                 numpy.array(adata_track.obs["time_h"])).resample_5h()
+        streamplot.add_trajectory(trajectory)
 
 
 def main():
@@ -144,27 +178,22 @@ def main():
     # Load the trajectories
     experiments = list_io.load_experiment_list_file(_DATA_FILE)
 
-    trajectories = list()
+    streamplot = _Streamplot()
     for experiment in experiments:
         if experiment.name.get_name() == _EXPERIMENT_NAME:
-            _extract_trajectories(experiment, adata, lda, trajectories)
+            _extract_trajectories(experiment, adata, lda, streamplot)
             break
 
     # Plot the LDA
     figure = lib_figures.new_figure(size=(3.5, 2.5))
     ax: Axes = figure.gca()
+    ax.set_ylim(5, -5)
+    ax.set_xlim(-5, 5)
     _plot_lda(ax, lda, adata)
-    for line in trajectories:
-        # Plot a line
-        ax.plot(line.x_values, line.y_values, color="#636e72", linewidth=1)
-        # Plot dots along the line
-        ax.scatter(line.x_values[:-1], line.y_values[:-1], color="#636e72", s=6, zorder=4)
-        # Except for the last dot, where we plot an arrow
-        ax.arrow(line.x_values[-2], line.y_values[-2],
-                 (line.x_values[-1] - line.x_values[-2]),
-                 (line.y_values[-1] - line.y_values[-2]),
-                 head_width=0.5, head_length=0.7, width=0.01, linewidth=0, color="black", zorder=5)
-        ax.text(line.x_values[-1], line.y_values[-1], str(line.label))
+
+    streamplot.plot(ax)
+
+
 
     ax.set_aspect(1)
     plt.show()
@@ -175,7 +204,7 @@ def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
     background_palette = _desaturate(lib_figures.CELL_TYPE_PALETTE)
 
     # Plot the LDA
-    ax.scatter(plot_coords[:, 0], plot_coords[:, 1],
+    ax.scatter(plot_coords[:, 0], -plot_coords[:, 1],
                alpha=0.8, s=15, lw=0,
                color=[background_palette[adata.obs["cell_type_training"][i]] for i in
                       range(len(adata.obs["cell_type_training"]))])
