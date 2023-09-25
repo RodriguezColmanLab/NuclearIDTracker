@@ -17,7 +17,9 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 import lib_data
 import lib_figures
+from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
+from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 
 LDA_FILE = "../../Data/all_data.h5ad"
@@ -63,7 +65,7 @@ class _Streamplot:
 
     def __init__(self):
         self._half_width = 5
-        self._count = 30
+        self._count = 20
         self._x_coords, self._y_coords = numpy.meshgrid(
             numpy.linspace(-self._half_width, self._half_width, self._count),
             numpy.linspace(-self._half_width, self._half_width, self._count))
@@ -84,8 +86,6 @@ class _Streamplot:
             dx = trajectory.x_values[i] - x_start
             dy = trajectory.y_values[i] - y_start
             dt = trajectory.time_h[i] - trajectory.time_h[i - 1]
-            if y_coord == 20 and x_coord == 14:
-                print(dx, dy, dt)
             self._dx_sums[y_coord, x_coord] += dx / dt
             self._dy_sums[y_coord, x_coord] += dy / dt
             self._counts[y_coord, x_coord] += 1
@@ -95,14 +95,20 @@ class _Streamplot:
         dx_values = self._dx_sums / numpy.clip(self._counts, 1, None)
         dy_values = self._dy_sums / numpy.clip(self._counts, 1, None)
 
-        tifffile.imwrite("E:/Scratch/counts.tif", self._counts)
-        tifffile.imwrite("E:/Scratch/dx_values.tif", dx_values)
-        tifffile.imwrite("E:/Scratch/dy_values.tif", dy_values)
+        speed = np.sqrt(dx_values ** 2 + dy_values ** 2)
 
-        counts_sqrt = np.sqrt(self._counts)
-        lw = 2 * counts_sqrt / counts_sqrt.max()
-        return ax.streamplot(self._x_coords, self._y_coords, dx_values, dy_values, density=0.75, color="black",
-                             linewidth=lw, broken_streamlines=False)
+        # Cap speed by a maximum value
+        max_speed = 0.1
+        factor = numpy.where(speed > max_speed, max_speed / (speed + 0.00001), numpy.ones_like(speed))
+        dx_values *= factor
+        dy_values *= factor
+
+        # Hide arrows (or dots) where we don't have enough counts
+        dx_values[self._counts < 5] = numpy.nan
+        dy_values[self._counts < 5] = numpy.nan
+
+        ax.quiver(self._x_coords, self._y_coords, dx_values, dy_values, scale=1, width=0.009,
+                  headwidth=2.7, headlength=2.7, headaxislength=2.25)
 
 
 def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
