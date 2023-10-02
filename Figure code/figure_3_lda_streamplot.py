@@ -17,7 +17,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 import lib_data
 import lib_figures
-from organoid_tracker.core import TimePoint
+import lib_streamplot
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
@@ -65,7 +65,7 @@ class _Streamplot:
 
     def __init__(self):
         self._half_width = 5
-        self._count = 20
+        self._count = 30
         self._x_coords, self._y_coords = numpy.meshgrid(
             numpy.linspace(-self._half_width, self._half_width, self._count),
             numpy.linspace(-self._half_width, self._half_width, self._count))
@@ -103,12 +103,16 @@ class _Streamplot:
         dx_values *= factor
         dy_values *= factor
 
-        # Hide arrows (or dots) where we don't have enough counts
-        dx_values[self._counts < 5] = numpy.nan
-        dy_values[self._counts < 5] = numpy.nan
+        # counts_sqrt = np.sqrt(self._counts)
+        # lw = 2 * counts_sqrt / counts_sqrt.max()
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1.5, color="black", linewidth=0.75,
+                      maxlength=0.12, integration_direction="forward")
 
-        ax.quiver(self._x_coords, self._y_coords, dx_values, dy_values, scale=1, width=0.009,
-                  headwidth=2.7, headlength=2.7, headaxislength=2.25)
+        # Hide arrows (or dots) where we don't have enough counts
+        # dx_values[self._counts < 5] = numpy.nan
+        # dy_values[self._counts < 5] = numpy.nan
+        # ax.quiver(self._x_coords, self._y_coords, dx_values, dy_values, scale=1, width=0.009,
+        #       headwidth=2.7, headlength=2.7, headaxislength=2.25)
 
 
 def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
@@ -211,7 +215,7 @@ def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
 
     # Plot the LDA
     ax.scatter(plot_coords[:, 0], -plot_coords[:, 1],
-               alpha=0.8, s=15, lw=0,
+               alpha=0.8, s=8, lw=0,
                color=[background_palette[adata.obs["cell_type_training"][i]] for i in
                       range(len(adata.obs["cell_type_training"]))])
     used_cell_types = adata.obs["cell_type_training"].array.categories
