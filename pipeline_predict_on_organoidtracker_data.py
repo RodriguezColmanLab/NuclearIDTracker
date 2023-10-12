@@ -12,12 +12,12 @@ _MODEL_FOLDER = r"../Data/Models/epochs-1-neurons-0"
 _INPUT_FILE = "../Data/Testing data - input - treatments.autlist"
 _OUTPUT_FOLDER = "../Data/Testing data - output - treatments"
 
-def predict_organoid(experiment: Experiment):
+
+def predict_organoid(experiment: Experiment, model: lib_models.OurModel):
     # Delete existing cell types
     experiment.position_data.delete_data_with_name("type")
 
-    # Load the model
-    model = lib_models.load_model(_MODEL_FOLDER)
+    # Get input parameter names
     input_names = model.get_input_output().input_mapping
 
     # Construct data arrays in the desired format
@@ -48,10 +48,12 @@ def predict_organoid(experiment: Experiment):
 
 
 def main():
+    model = lib_models.load_model(_MODEL_FOLDER)
+
     os.makedirs(_OUTPUT_FOLDER, exist_ok=True)
     for experiment in list_io.load_experiment_list_file(_INPUT_FILE):
         print(f"Working on {experiment.name}...")
-        predict_organoid(experiment)
+        predict_organoid(experiment, model)
         io.save_data_to_json(experiment,
                              os.path.join(_OUTPUT_FOLDER, f"{experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
 
