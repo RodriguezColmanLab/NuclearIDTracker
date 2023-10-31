@@ -80,7 +80,8 @@ def _draw_position(ax: Axes, experiment: Experiment, last_position: Position):
     for cell_type_name in cell_type_names:
         MovingAverage(t_values, probabilities[cell_type_name],
                       window_width=_AVERAGING_WINDOW_WIDTH_H).plot(ax,
-                                                                   color=_parse_color(lib_figures.CELL_TYPE_PALETTE[cell_type_name]),
+                                                                   color=_parse_color(
+                                                                       lib_figures.CELL_TYPE_PALETTE[cell_type_name]),
                                                                    label=lib_figures.style_cell_type_name(cell_type_name))
     ax.set_ylim(-0.05, 1.05)
     ax.set_yticks([0, 0.25, 0.5, 0.75, 1])

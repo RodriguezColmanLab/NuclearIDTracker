@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Dict, Set, List
+from typing import Dict, List
 
 import numpy
 from matplotlib import pyplot as plt

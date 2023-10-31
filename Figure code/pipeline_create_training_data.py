@@ -1,21 +1,16 @@
-import math
 from typing import Optional
 
 import numpy
 import pandas
 from anndata import AnnData
-from numpy import ndarray
 
 import lib_data
 from organoid_tracker.core import TimePoint
-from organoid_tracker.core.position import Position
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
 
-
-_INPUT_FILE = r"../Data/Training data.autlist"
+_INPUT_FILE = r"../../Data/Training data.autlist"
 _METADATA_NAMES = ["neighbor_distance_variation", "neighbor_distance_median_um", "intensity_factor_local", "neighbor_distance_mean_um", "volume_um3", "volume_um3_local", "solidity", "solidity_local", "surface_um2", "surface_um2_local", "feret_diameter_max_um", "feret_diameter_max_um_local", "intensity_factor", "ellipticity", "ellipticity_local", "extent", "extent_local", "minor_axis_length_um", "minor_axis_length_um_local", "intermediate_axis_length_um", "intermediate_axis_length_um_local", "major_axis_length_um", "major_axis_length_um_local"]
-_OUTPUT_FILE = "../Data/all_data.h5ad"
+_OUTPUT_FILE = "../../Data/all_data.h5ad"
 
 
 def _convert_cell_type(position_type: Optional[str]) -> str:

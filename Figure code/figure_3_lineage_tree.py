@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional, Union
 
 import numpy
@@ -88,11 +89,10 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
         if cell_type_probabilities is None:
             return 0.8, 0.8, 0.8
 
-        color = numpy.array([cell_type_probabilities[paneth_index],
+        # TODO properly normalize colors
+        color = numpy.array([math.sqrt(cell_type_probabilities[paneth_index]),
                              cell_type_probabilities[stem_index],
                              cell_type_probabilities[enterocyte_index]])
-        color -= color.min()
-        color /= color.max()
 
         return color[0], color[1], color[2]
 

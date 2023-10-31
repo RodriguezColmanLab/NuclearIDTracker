@@ -1,28 +1,20 @@
-import math
 import pickle
-from typing import Dict, Any, Optional, NamedTuple, List
+from typing import Optional, NamedTuple, List
 
 import numpy
 import scipy
 from matplotlib.backend_bases import MouseEvent
-from numpy import ndarray
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
+from . import lib_data
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.gui import dialog
 from organoid_tracker.gui.window import Window
 from organoid_tracker.text_popup.text_popup import RichTextPopup
 from organoid_tracker.visualizer import activate
 from organoid_tracker.visualizer.exitable_image_visualizer import ExitableImageVisualizer
-
-
-def get_menu_items(window: Window) -> Dict[str, Any]:
-    return {
-        "View//Types-Cell type calculations (linear model only)...": lambda: _view_cell_type_parameters(window)
-    }
 
 
 class _ModelParameters(NamedTuple):
@@ -33,33 +25,7 @@ class _ModelParameters(NamedTuple):
     regressor: LogisticRegression
 
 
-def _get_data_array(position_data: PositionData, position: Position, input_names: List[str]) -> Optional[ndarray]:
-    array = numpy.empty(len(input_names), dtype=numpy.float32)
-    for i, name in enumerate(input_names):
-        value = None
-        if name == "sphericity":
-            # Special case, we need to calculate
-            volume = position_data.get_position_data(position, "volume_um3")
-            surface = position_data.get_position_data(position, "surface_um2")
-            if volume is not None and surface is not None:
-                value = math.pi ** (1/3) * (6 * volume) ** (2/3) / surface
-        else:
-            # Otherwise, just look up
-            value = position_data.get_position_data(position, name)
-
-        if value is None or value == 0:
-            return None  # Abort, a value is missing
-
-        if name in {"neighbor_distance_variation", "solidity", "sphericity", "ellipticity", "intensity_factor"}\
-                or name.endswith("_local"):
-            # Ratios should be an exponential, as the analysis will log-transform the data
-            value = math.exp(value)
-
-        array[i] = value
-    return array
-
-
-def _view_cell_type_parameters(window: Window):
+def view_cell_type_parameters(window: Window):
     file = dialog.prompt_load_file("Model file", [("Linear model", "linear_model_pickled.sav")])
     if file is None:
         return  # Cancelled
@@ -97,7 +63,7 @@ class _CellParametersPopup(RichTextPopup):
         return None
 
     def _view_position_parameters(self) -> str:
-        values = _get_data_array(self._experiment.position_data, self._position, self._parameters.input_mapping)
+        values = lib_data.get_data_array(self._experiment.position_data, self._position, self._parameters.input_mapping)
         if values is None:
             return "**We're missing some measurement values, so we cannot calculate the cell type scores.**"
         scaled_values = self._parameters.scaler.transform(values.reshape(1, -1)).flatten()

@@ -1,12 +1,13 @@
+# Copy of the file in the Figure Code folder, unfortunately
 import json
 import os
 import pickle
+import sys
 from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple
 
 import numpy
 import scipy.special
-import tensorflow
 from numpy import ndarray
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -49,9 +50,9 @@ class OurModel(ABC):
 
 class _KerasModel(OurModel):
     _input_output: ModelInputOutput
-    _keras_model: tensorflow.keras.Model
+    _keras_model: "tensorflow.keras.Model"
 
-    def __init__(self, input_output: ModelInputOutput, keras_model: tensorflow.keras.Model):
+    def __init__(self, input_output: ModelInputOutput, keras_model: "tensorflow.keras.Model"):
         self._input_output = input_output
         self._keras_model = keras_model
 
@@ -161,6 +162,11 @@ class _RandomForestModel(OurModel):
 
 
 def load_model(folder: str) -> OurModel:
+    # Needed to load pickle files
+    dir_name = os.path.dirname(__file__)
+    if dir_name not in sys.path:
+        sys.path.append(dir_name)
+
     pickle_file_for_linear_model = os.path.join(folder, "linear_model_pickled.sav")
     if os.path.exists(pickle_file_for_linear_model):
         with open(pickle_file_for_linear_model, "rb") as handle:
@@ -176,13 +182,16 @@ def load_model(folder: str) -> OurModel:
             random_forest = pickle.load(handle)
         return _RandomForestModel(input_output, random_forest)
 
-    keras_model = tensorflow.keras.models.load_model(folder)
-    with open(os.path.join(folder, "settings.json")) as handle:
-        settings = json.load(handle)
-        cell_types = settings["cell_types"]
-        input_parameters = settings["input_parameters"]
-    return _KerasModel(ModelInputOutput(cell_type_mapping=cell_types, input_mapping=input_parameters),
-                       keras_model)
+    if os.path.exists(os.path.join(folder, "settings.json")):
+        import tensorflow
+        keras_model = tensorflow.keras.models.load_model(folder)
+        with open(os.path.join(folder, "settings.json")) as handle:
+            settings = json.load(handle)
+            cell_types = settings["cell_types"]
+            input_parameters = settings["input_parameters"]
+        return _KerasModel(ModelInputOutput(cell_type_mapping=cell_types, input_mapping=input_parameters),
+                           keras_model)
+    raise ValueError(f"No model found in {folder}.")
 
 
 def build_random_forest(input_output: ModelInputOutput, tree_count: int = 100) -> OurModel:
@@ -193,6 +202,7 @@ def build_random_forest(input_output: ModelInputOutput, tree_count: int = 100) -
 def build_shallow_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons: int) -> OurModel:
     """Builds a shallow model, so with one hidden layer. If hidden_nearons==0, then we have no hidden layer at all, and
     instead we'll have a linear model."""
+    import tensorflow
     if hidden_neurons == 0:
         # Just use a linear classifier, solved analytically
         scaler = StandardScaler()

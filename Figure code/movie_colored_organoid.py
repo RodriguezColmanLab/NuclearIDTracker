@@ -1,3 +1,4 @@
+import os
 from typing import Optional, List
 
 import numpy
@@ -14,16 +15,17 @@ from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking import nearby_position_finder
 
-_LIST_FILE = "../../Data/Predicted data (automatic).autlist"
-_OUTPUT_FILE = "../Figures/movie_colored_{experiment}.tif"
+_LIST_FILE = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-10 RK0064 Nguyen Cell type prediction E400\E400_pos9.autlist"
+_OUTPUT_FILE = "E:/Scratch/Figures/movie_colored_{experiment}.tif"
 
 _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)
 
-_Z = 6
+_Z = 2
 
 
 def main():
+    os.makedirs(os.path.dirname(_OUTPUT_FILE), exist_ok=True)
     for experiment in list_io.load_experiment_list_file(_LIST_FILE):
         print(f"Working on {experiment.name}...")
         time_point_count = len(list(experiment.positions.time_points()))

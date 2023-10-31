@@ -1,6 +1,5 @@
 import math
 
-import numpy
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools

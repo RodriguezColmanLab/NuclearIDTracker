@@ -1,9 +1,10 @@
 import os
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 
 import numpy
 import scipy
 import skimage
+import tifffile
 from PIL import Image as PilImage
 from matplotlib import pyplot as plt
 from numpy import ndarray
@@ -14,13 +15,15 @@ from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.images import Image
 from organoid_tracker.core.position import Position
 from organoid_tracker.gui import dialog
+from organoid_tracker.gui.threading import Task
 from organoid_tracker.gui.window import Window
 from organoid_tracker.linking import nearby_position_finder
 
 
 def get_menu_items(window: Window):
     return {
-        "File//Export-Export image//Projection-Max-intensity with cell types...": lambda: _show_colored_image(window)
+        "File//Export-Export image//Projection-Max-intensity with cell types...": lambda: _show_colored_image(window),
+        "File//Export-Export movie//Projection-Max-intensity with cell types...": lambda: _show_colored_movie(window)
     }
 
 
@@ -55,6 +58,83 @@ def _show_colored_image(window: Window):
             image = _get_image(experiment, window.display_settings.time_point, nucleus_channel,
                                segmentation_channel)
             plt.imsave(save_file, image)
+
+
+def _show_colored_movie(window: Window):
+    nucleus_channel = window.display_settings.image_channel
+    experiments = list(window.get_active_experiments())
+    channel_count = min_none([len(experiment.images.get_channels()) for experiment in experiments])
+    if channel_count is None or channel_count == 0:
+        raise UserError("No images", "No images have been loaded.")
+
+    segmentation_channel = dialog.prompt_int("Segmentation channel", "In which channel did you store the segmentation?",
+                                             minimum=1, maximum=channel_count, default=channel_count)
+    if segmentation_channel is None:
+        return
+    segmentation_channel = ImageChannel(index_zero=segmentation_channel - 1)
+
+    if len(experiments) == 1:
+        # Prompt to save to single file
+        save_file = dialog.prompt_save_file("Save movie", [("TIF files", "*.tif")])
+        if save_file is None:
+            return
+        window.get_scheduler().add_task(_CreateMovieTask(experiments, nucleus_channel, segmentation_channel, save_file))
+    else:
+        # Prompt to save to folder
+        save_folder = dialog.prompt_save_file("Save folder for movies", [("Folder", "*")])
+        if save_folder is None:
+            return
+        os.makedirs(save_folder, exist_ok=True)
+        window.get_scheduler().add_task(_CreateMovieTask(experiments, nucleus_channel, segmentation_channel, save_folder))
+
+
+class _CreateMovieTask(Task):
+    """Creates a movie by writing an image for every time point."""
+
+    _experiment_copies: List[Experiment]
+    _nucleus_channel: ImageChannel
+    _segmentation_channel: ImageChannel
+    _save_file_or_folder: str
+
+    def __init__(self, experiments: List[Experiment], nucleus_channel: ImageChannel, segmentation_channel: ImageChannel,
+                 save_file_or_folder: str):
+        """save_file_or_folder is a folder if you have multiple experiments, or a file if you only have one."""
+        self._experiment_copies = [experiment.copy_selected(images=True, positions=True, position_data=True,
+                                                            global_data=True)
+                                   for experiment in experiments]
+        self._nucleus_channel = nucleus_channel
+        self._segmentation_channel = segmentation_channel
+        self._save_file_or_folder = save_file_or_folder
+
+    def compute(self) -> Any:
+        array = None
+
+        for j, experiment in enumerate(self._experiment_copies):
+            print(f"\nWorking on {experiment.name}...")
+            for i, time_point in enumerate(experiment.positions.time_points()):
+                print(time_point.time_point_number(), end="  ")
+                image = _get_image(experiment, time_point, self._nucleus_channel, self._segmentation_channel)
+                if array is None:
+                    time_point_count = experiment.positions.last_time_point_number() \
+                                       - experiment.first_time_point_number() + 1
+                    array = numpy.zeros((time_point_count, image.shape[0], image.shape[1], 3), dtype=numpy.uint8)
+                array[i] = (image * 255).astype(numpy.uint8)[:, :, 0:3]  # Convert to 8bit, remove useless alpha channel
+
+            if len(self._experiment_copies) == 1:
+                save_file = self._save_file_or_folder
+            else:
+                save_file = os.path.join(self._save_file_or_folder, f"{j + 1}. {experiment.name.get_save_name()}.tif")
+            tifffile.imwrite(save_file, array, compression=tifffile.COMPRESSION.ADOBE_DEFLATE, compressionargs={"level": 9})
+
+        return "Done"  # Output not used, we directly save
+
+    def on_finished(self, result: Any):
+        if len(self._experiment_copies) == 1:
+            dialog.popup_message("Cell type movie done", f"Done creating the cell type movie. It can be found in"
+                                                         f" \"{self._save_file_or_folder}\".")
+        else:
+            dialog.popup_message("Cell type movies done", f"Done creating the cell type movie. They can be found in"
+                                                          f" \"{self._save_file_or_folder}\".")
 
 
 def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: ImageChannel,

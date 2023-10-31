@@ -1,11 +1,8 @@
-from enum import Enum, auto
 from typing import Tuple, List
 
 import matplotlib.colors
 import numpy
-import scipy
 from matplotlib import pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 from numpy import ndarray
 
 import lib_figures

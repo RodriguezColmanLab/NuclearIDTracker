@@ -7,7 +7,6 @@ import numpy as np
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
-import tifffile
 from anndata import AnnData
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
@@ -19,7 +18,6 @@ import lib_data
 import lib_figures
 import lib_streamplot
 from organoid_tracker.core.experiment import Experiment
-from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 
 LDA_FILE = "../../Data/all_data.h5ad"
@@ -106,7 +104,7 @@ class _Streamplot:
         # counts_sqrt = np.sqrt(self._counts)
         # lw = 2 * counts_sqrt / counts_sqrt.max()
         lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1.5, color="black", linewidth=0.75,
-                      maxlength=0.12, integration_direction="forward")
+                                  maxlength=0.12, integration_direction="forward")
 
         # Hide arrows (or dots) where we don't have enough counts
         # dx_values[self._counts < 5] = numpy.nan

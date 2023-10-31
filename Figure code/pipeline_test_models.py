@@ -18,7 +18,7 @@ _NUM_FOLDS = 5
 _HIDDEN_NEURONS = [0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 _EPOCHS = [1, 2, 3, 4, 5, 6]
 _OUTPUT_FOLDER = "../Data/Models"
-_TRAINING_DATA_FILE = "../Data/all_data.h5ad"
+_TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
 
 
 def _calculate_class_weights(cell_types: pandas.Series) -> Dict[int, float]:

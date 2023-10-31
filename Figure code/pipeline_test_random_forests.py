@@ -17,7 +17,7 @@ from lib_models import ModelInputOutput, build_random_forest
 _NUM_FOLDS = 5
 _TREE_COUNTS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
 _OUTPUT_FOLDER = "../Data/Models"
-_TRAINING_DATA_FILE = "../Data/all_data.h5ad"
+_TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
 
 
 def _calculate_class_weights(cell_types: pandas.Series) -> Dict[int, float]:
