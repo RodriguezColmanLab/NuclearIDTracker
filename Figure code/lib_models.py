@@ -17,6 +17,17 @@ class ModelInputOutput(NamedTuple):
     cell_type_mapping: List[str]
     input_mapping: List[str]
 
+    def to_dict(self) -> Dict[str, List[str]]:
+        return {
+            "cell_type_mapping": self.cell_type_mapping,
+            "input_mapping": self.input_mapping
+        }
+
+    @staticmethod
+    def from_dict(dictionary: Dict[str, List[str]]) -> "ModelInputOutput":
+        return ModelInputOutput(cell_type_mapping=dictionary["cell_type_mapping"],
+                                input_mapping=dictionary["input_mapping"])
+
 
 class OurModel(ABC):
 
@@ -106,7 +117,7 @@ class _LinearModel(OurModel):
     def save(self, folder: str):
         pickle_file = os.path.join(folder, "linear_model_pickled.sav")
         with open(pickle_file, "wb") as handle:
-            pickle.dump(self._input_output, handle)
+            pickle.dump(self._input_output.to_dict(), handle)
             pickle.dump(self._scaler, handle)
             pickle.dump(self._logistic_regression, handle)
 
@@ -153,7 +164,7 @@ class _RandomForestModel(OurModel):
     def save(self, folder: str):
         pickle_file = os.path.join(folder, "random_forest_pickled.sav")
         with open(pickle_file, "wb") as handle:
-            pickle.dump(self._input_output, handle)
+            pickle.dump(self._input_output.to_dict(), handle)
             pickle.dump(self._random_forest, handle)
 
     def predict(self, x_values: ndarray) -> ndarray:
@@ -169,7 +180,7 @@ def load_model(folder: str) -> OurModel:
     pickle_file_for_linear_model = os.path.join(folder, "linear_model_pickled.sav")
     if os.path.exists(pickle_file_for_linear_model):
         with open(pickle_file_for_linear_model, "rb") as handle:
-            input_output = pickle.load(handle)
+            input_output = ModelInputOutput.from_dict(pickle.load(handle))
             scaler = pickle.load(handle)
             regressor = pickle.load(handle)
         return _LinearModel(input_output, scaler, regressor)
@@ -177,7 +188,7 @@ def load_model(folder: str) -> OurModel:
     pickle_file_for_random_forest = os.path.join(folder, "random_forest_pickled.sav")
     if os.path.exists(pickle_file_for_random_forest):
         with open(pickle_file_for_random_forest, "rb") as handle:
-            input_output = pickle.load(handle)
+            input_output = ModelInputOutput.from_dict(pickle.load(handle))
             random_forest = pickle.load(handle)
         return _RandomForestModel(input_output, random_forest)
 
