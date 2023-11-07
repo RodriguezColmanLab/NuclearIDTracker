@@ -9,11 +9,11 @@ import tifffile
 from matplotlib import pyplot as plt
 from numpy import ndarray
 
-import figure_lib
+import lib_figures
 
-_GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
-_AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\CellPose segmentation"
-_NUCLEUS_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\Nucleus images"
+_GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
+_AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\CellPose segmentation"
+_NUCLEUS_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\Nucleus images"
 _PICKED_IOU = {30, 80}
 
 
@@ -130,7 +130,7 @@ def main():
         automatic = tifffile.imread(os.path.join(_AUTOMATIC_FOLDER, file))
         nuclei = tifffile.imread(os.path.join(_NUCLEUS_FOLDER, file))
         for result in _find_examples(ground_truth, automatic):
-            figure = figure_lib.new_figure()
+            figure = lib_figures.new_figure()
             ax_segmentation, ax_nuclei = figure.subplots(nrows=1, ncols=2)
 
             margin = 5
@@ -143,8 +143,9 @@ def main():
             ground_truth_crop = ground_truth[z, min_y:max_y, min_x:max_x] == result.ground_truth_label
             automatic_crop = automatic[z, min_y:max_y, min_x:max_x] == result.automatic_label
             segmentation_image = numpy.zeros(automatic_crop.shape + (3,), dtype=numpy.float32)
-            segmentation_image[:, :, 0] = ground_truth_crop
-            segmentation_image[:, :, 2] = automatic_crop
+            segmentation_image[:, :][ground_truth_crop & ~automatic_crop] = rgb(214, 48, 49)  # Only ground truth
+            segmentation_image[:, :][ground_truth_crop & automatic_crop] = rgb(9, 132, 227)  # Overlap
+            segmentation_image[:, :][~ground_truth_crop & automatic_crop] = rgb(108, 92, 231)  # Only prediction
 
             ax_nuclei.imshow(nucleus_crop, cmap="gray")
             ax_segmentation.imshow(segmentation_image)
@@ -153,6 +154,10 @@ def main():
             figure.suptitle(f"IoU: {result.iou:.2f}")
 
             plt.show()
+
+
+def rgb(red: int, green: int, blue: int) -> Tuple[float, float, float]:
+    return red / 255, green / 255, blue / 255
 
 
 if __name__ == "__main__":
