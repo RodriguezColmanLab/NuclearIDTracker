@@ -6,6 +6,7 @@ import scanpy
 import scanpy.preprocessing
 import sklearn.metrics
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
 from numpy import ndarray
 from sklearn.model_selection import KFold
 from lib_models import build_shallow_model, ModelInputOutput
@@ -53,28 +54,29 @@ def main():
     cell_types = [lib_figures.style_cell_type_name(name) for name in cell_types]
 
     fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
+    space_for_bars = len(cell_types) + 0.75
 
-    scaled_matrix = confusion_matrix.astype(dtype=numpy.float64)
-    for i in range(scaled_matrix.shape[1]):
-        scaled_matrix[i] /= scaled_matrix[i].sum()
-    max_scaled_value = scaled_matrix.max()
+    figure = lib_figures.new_figure()
+    ax: Axes = figure.gca()
+    for i, cell_type_immunostaining in enumerate(cell_types):
+        x_values = [i * space_for_bars + j for j in range(len(cell_types))]
+        y_values = [confusion_matrix[i, j] / numpy.sum(confusion_matrix[i]) * 100 for j in range(len(cell_types))]
+        ax.bar(x_values, y_values, color=[("#0984e3" if i == j else "#b2bec3") for j in range(len(cell_types))],
+               width=1, align="edge")
+        for x, y, cell_type in zip(x_values, y_values, cell_types):
+            if cell_type == cell_type_immunostaining:
+                ax.text(x + 0.5, y - 1, cell_type, rotation=90, horizontalalignment="center", verticalalignment="top",
+                        color="white")
+            else:
+                ax.text(x + 0.5, y + 3, cell_type, rotation=90, horizontalalignment="center")
 
-    figure = lib_figures.new_figure(size=(4, 3))
-    ax = figure.gca()
-    ax.imshow(scaled_matrix, cmap="Oranges")
-    for i in range(confusion_matrix.shape[0]):
-        for j in range(confusion_matrix.shape[1]):
-            color = "white" if scaled_matrix[i, j] > 0.7 * max_scaled_value else "black"
-            ax.text(j, i, f"{scaled_matrix[i, j] * 100:.0f}%", horizontalalignment="center", verticalalignment="center",
-                    color=color)
-
-    ax.set_xticks(list(range(len(cell_types))))
-    ax.set_xticklabels(cell_types, rotation=-45, ha='left')
-    ax.set_yticks(list(range(len(cell_types))))
-    ax.set_yticklabels(cell_types)
+    ax.set_xticks([space_for_bars * i + 2 for i in range(len(cell_types))])
+    ax.set_xticklabels(cell_types)
+    ax.set_xlabel("Cell type from immunostaining")
+    ax.set_ylabel("Predicted types (%)")
     ax.set_title(f"Accuracy: {fraction_correct * 100:.1f}%")
-    ax.set_xlabel("Predicted type")
-    ax.set_ylabel("Actual type")
+    ax.set_ylim(0, 100)
+
     plt.show()
 
 
