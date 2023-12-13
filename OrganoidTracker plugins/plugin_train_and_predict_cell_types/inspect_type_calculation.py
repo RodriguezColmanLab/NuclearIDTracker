@@ -33,8 +33,8 @@ def view_cell_type_parameters(window: Window):
         input_output = pickle.load(handle)
         scaler: StandardScaler = pickle.load(handle)
         regressor: LogisticRegression = pickle.load(handle)
-    model_parameters = _ModelParameters(cell_type_mapping=input_output.cell_type_mapping,
-                                        input_mapping=input_output.input_mapping, scaler=scaler, regressor=regressor)
+    model_parameters = _ModelParameters(cell_type_mapping=input_output["cell_type_mapping"],
+                                        input_mapping=input_output["input_mapping"], scaler=scaler, regressor=regressor)
     activate(_CellTypeParameterViewer(window, model_parameters))
 
 
