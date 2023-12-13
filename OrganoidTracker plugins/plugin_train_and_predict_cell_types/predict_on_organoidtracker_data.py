@@ -130,9 +130,9 @@ def run_predictions():
     model = lib_models.load_model(parsed_config.model_folder)
 
     os.makedirs(parsed_config.output_folder, exist_ok=True)
-    for experiment in list_io.load_experiment_list_file(parsed_config.tracking_input_file):
+    for i, experiment in enumerate(list_io.load_experiment_list_file(parsed_config.tracking_input_file)):
         print(f"Working on {experiment.name}...")
         _predict_organoid(experiment, model)
         io.save_data_to_json(experiment,
-                             os.path.join(parsed_config.output_folder, f"{experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
+                             os.path.join(parsed_config.output_folder, f"{i + 1}. {experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
 
