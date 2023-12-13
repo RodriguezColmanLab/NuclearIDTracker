@@ -50,9 +50,6 @@ class _SingleParameterResults:
 def main():
     cell_types, results = _evaluate_model()
     confusion_matrix = results.confusion_matrix
-
-    cell_types = [lib_figures.style_cell_type_name(name) for name in cell_types]
-
     fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
     space_for_bars = len(cell_types) + 0.75
 
@@ -61,17 +58,19 @@ def main():
     for i, cell_type_immunostaining in enumerate(cell_types):
         x_values = [i * space_for_bars + j for j in range(len(cell_types))]
         y_values = [confusion_matrix[i, j] / numpy.sum(confusion_matrix[i]) * 100 for j in range(len(cell_types))]
-        ax.bar(x_values, y_values, color=[("#0984e3" if i == j else "#b2bec3") for j in range(len(cell_types))],
+        ax.bar(x_values, y_values, color=[lib_figures.CELL_TYPE_PALETTE[cell_types[j]] for j in range(len(cell_types))],
                width=1, align="edge")
         for x, y, cell_type in zip(x_values, y_values, cell_types):
             if cell_type == cell_type_immunostaining:
-                ax.text(x + 0.5, y - 1, cell_type, rotation=90, horizontalalignment="center", verticalalignment="top",
+                ax.text(x + 0.5, y - 1, lib_figures.style_cell_type_name(cell_type), rotation=90, horizontalalignment="center", verticalalignment="top",
                         color="white")
+                # Highlight the bar
+                # ax.bar([x], [y], color=[(0, 0, 0, 0)], width=1, align="edge", linewidth=3, edgecolor="black")
             else:
-                ax.text(x + 0.5, y + 3, cell_type, rotation=90, horizontalalignment="center")
+                ax.text(x + 0.5, y + 3, lib_figures.style_cell_type_name(cell_type), rotation=90, horizontalalignment="center")
 
     ax.set_xticks([space_for_bars * i + 2 for i in range(len(cell_types))])
-    ax.set_xticklabels(cell_types)
+    ax.set_xticklabels([lib_figures.style_cell_type_name(name) for name in cell_types])
     ax.set_xlabel("Cell type from immunostaining")
     ax.set_ylabel("Predicted types (%)")
     ax.set_title(f"Accuracy: {fraction_correct * 100:.1f}%")
