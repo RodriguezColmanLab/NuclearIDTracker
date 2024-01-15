@@ -15,6 +15,7 @@ from organoid_tracker.position_analysis import position_markers
 STEM_PUTATIVE = Marker([Position], "STEM_PUTATIVE", "putative stem cell", (41, 219, 47))
 STEM_PROGENY = Marker([Position], "STEM_PROGENY", "progeny of a (putative) stem cell", (41, 219, 47))
 STEM = Marker([Position], "STEM", "stem cell", (38, 204, 60))
+STEM_FETAL = Marker([Position], "STEM_FETAL", "fetal stem cell", (85, 239, 196))
 
 # Absorptive
 ABSORPTIVE_PRECURSOR = Marker([Position], "ABSORPTIVE_PRECURSOR", "precursor of an absorptive cell", (0, 8, 255))
@@ -46,7 +47,7 @@ CRYPT = Marker([Spline], "CRYPT", "crypt axis", (255, 0, 0), is_axis=True)
 
 
 def get_markers() -> List[Marker]:
-    return [STEM_PUTATIVE, STEM_PROGENY, STEM, ABSORPTIVE_PRECURSOR, ABSORPTIVE_PROGENY, M_CELL, ENTEROCYTE,
+    return [STEM_PUTATIVE, STEM_PROGENY, STEM, STEM_FETAL, ABSORPTIVE_PRECURSOR, ABSORPTIVE_PROGENY, M_CELL, ENTEROCYTE,
             OTHER_DIFFERENTIATED, PANETH_PRECURSOR, PANETH, SECRETIVE_PRECURSOR, SECRETIVE_PROGENY, SECRETORY,
             MATURE_GOBLET, GOBLET, ENTEROENDOCRINE, TUFT, UNLABELED, WGA_PLUS, LUMEN] \
         + [CRYPT]

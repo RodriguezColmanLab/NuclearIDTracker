@@ -21,6 +21,7 @@ CELL_TYPE_PALETTE = {
     "PANETH": "#B60101",
     "STEM": "#26CC3C",
     "STEM_PUTATIVE": "#26CC3C",
+    "STEM_FETAL": "#55efc4",
     "UNLABELED": "#eeeeee",
     "TA": "#eeeeee",
     "NONE": "#eeeeee"
@@ -79,4 +80,5 @@ def new_figure(size: Tuple[float, float] = (4, 3)) -> Figure:
 
 
 def style_cell_type_name(cell_type_name: str) -> str:
-    return cell_type_name.lower().replace("mature_", "").replace("_", " ").replace("paneth", "Paneth")
+    return (cell_type_name.lower().replace("mature_", "").replace("_", " ")
+            .replace("paneth", "Paneth").replace("stem fetal", "fetal stem"))

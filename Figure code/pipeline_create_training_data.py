@@ -26,6 +26,8 @@ def _convert_cell_type(position_type: Optional[str]) -> str:
         return "STEM"
     if position_type == "MATURE_GOBLET":
         return "MATURE_GOBLET"
+    if position_type == "STEM_FETAL":
+        return "STEM_FETAL"
     return "NONE"
 
 
