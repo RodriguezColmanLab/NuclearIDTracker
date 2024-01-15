@@ -10,7 +10,7 @@ from matplotlib.figure import Figure
 from matplotlib.colors import LinearSegmentedColormap
 from numpy import ndarray
 
-import figure_lib
+import lib_figures
 
 INPUT_FILE = "../../Data/all_data.h5ad"
 NUMBER_OF_GENES = 6
@@ -22,19 +22,19 @@ def main():
     adata = scanpy.read_h5ad(INPUT_FILE)
 
     # Standard preprocessing
-    adata = figure_lib.standard_preprocess(adata)
+    adata = lib_figures.standard_preprocess(adata)
 
     # Remove cells that we cannot train on
     adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Nicer names
-    adata.var_names = [figure_lib.style_variable_name(var_name)
+    adata.var_names = [lib_figures.style_variable_name(var_name)
                        .replace(" ", "\n")
                        .replace("\n(", " (")
                        .replace("minor\naxis", "minor axis")
                        .replace("major\naxis", "major axis")
                        for var_name in adata.var_names]
-    adata.obs["cell_type_training"] = [figure_lib.style_cell_type_name(cell_type) for cell_type in
+    adata.obs["cell_type_training"] = [lib_figures.style_cell_type_name(cell_type) for cell_type in
                                        adata.obs["cell_type_training"]]
 
     scanpy.tools.rank_genes_groups(adata, 'cell_type_training', method='wilcoxon')
@@ -51,7 +51,7 @@ def main():
         name_table[:, i] = gene_names
         score_table[:, i] = scores
 
-    plot(figure_lib.new_figure(size=(6, 2.6)), cell_types, name_table, score_table)
+    plot(lib_figures.new_figure(size=(6, 2.6)), cell_types, name_table, score_table)
     plt.show()
 
 
