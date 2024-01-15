@@ -52,6 +52,8 @@ def _show_colored_image(window: Window):
         save_folder = dialog.prompt_save_file("Save folder for images", [("Folder", "*")])
         if save_folder is None:
             return
+        if os.path.isfile(save_folder):
+            os.unlink(save_folder)
         os.makedirs(save_folder, exist_ok=True)
         for i, experiment in enumerate(experiments):
             save_file = os.path.join(save_folder, f"{i + 1}. {experiment.name.get_save_name()}.png")
