@@ -206,6 +206,9 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, 
         if segmented_image is None or nuclei_image is None:
             continue
 
+        # Relabel to have continuous labels
+        segmented_image.array, _, _ = skimage.segmentation.relabel_sequential(segmented_image.array)
+
         # Index the properties
         regionprops_by_label = dict()
         image_size_z, image_size_y, image_size_x = segmented_image.array.shape
