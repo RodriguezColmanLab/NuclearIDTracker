@@ -67,6 +67,7 @@ class _CellParametersPopup(RichTextPopup):
         if values is None:
             return "**We're missing some measurement values, so we cannot calculate the cell type scores.**"
         scaled_values = self._parameters.scaler.transform(values.reshape(1, -1)).flatten()
+        numpy.clip(scaled_values, -3, 3, out=scaled_values)
 
         output = ""
         for cell_type, coefficients, intercept in zip(self._parameters.cell_type_mapping,
