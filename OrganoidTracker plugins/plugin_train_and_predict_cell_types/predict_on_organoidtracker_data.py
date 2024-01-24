@@ -76,7 +76,7 @@ def _parse_config(config: ConfigFile) -> _ParsedConfig:
 def create_prediction_script(window: Window):
     """Creates a segmentation script in the GUI. Called from get_menu_items()."""
     for experiment in window.get_active_experiments():
-        if not "ellipticity" in experiment.position_data.get_data_names_and_types():
+        if "ellipticity" not in experiment.position_data.get_data_names_and_types():
             raise UserError("Missing extracted parameters", f"You haven't extracted the shape parameters yet from the"
                                                             f" CellPose segmentation for the experiment"
                                                             f" \"{experiment.name}\". Please do so first.")
@@ -120,7 +120,6 @@ def create_prediction_script(window: Window):
         dialog.open_file(output_folder)
 
 
-
 def run_predictions():
     config = ConfigFile("types_predict")
     parsed_config = _parse_config(config)
@@ -134,5 +133,5 @@ def run_predictions():
         print(f"Working on {experiment.name}...")
         _predict_organoid(experiment, model)
         io.save_data_to_json(experiment,
-                             os.path.join(parsed_config.output_folder, f"{i + 1}. {experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
-
+                             os.path.join(parsed_config.output_folder,
+                                          f"{i + 1}. {experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
