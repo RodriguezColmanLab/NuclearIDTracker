@@ -22,8 +22,8 @@ from organoid_tracker.linking import nearby_position_finder
 
 def get_menu_items(window: Window):
     return {
-        "File//Export-Export image//Projection-Max-intensity with cell types...": lambda: _show_colored_image(window),
-        "File//Export-Export movie//Projection-Max-intensity with cell types...": lambda: _show_colored_movie(window)
+        "File//Export-Export image//Projection-Max-intensity colored by cell types (slow)...": lambda: _show_colored_image(window),
+        "File//Export-Export movie//Projection-Max-intensity colored by cell types (slow)...": lambda: _show_colored_movie(window)
     }
 
 
