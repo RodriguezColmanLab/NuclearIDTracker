@@ -9,8 +9,7 @@ from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
-
-_DATA_FILE = "../../Data/Testing data - output - treatments.autlist"
+_DATA_FILE = "../../Data/Immunostaining conditions.autlist"
 
 
 class _Condition(Enum):
@@ -70,6 +69,7 @@ class _CountByConditionAndCellType:
 
 def _get_condition(experiment: Experiment) -> _Condition:
     name = experiment.name.get_name()
+
     if "control" in name:
         return _Condition.CONTROL
     if "dapt chir" in name:
@@ -81,16 +81,29 @@ def _get_condition(experiment: Experiment) -> _Condition:
     raise ValueError("Unknown condition: " + name)
 
 
+def _get_immunostained_names(cell_type: str) -> str:
+    if cell_type == "UNLABELED":
+        return "double-negative"
+    if cell_type == "PANETH":
+        return "lysozyme-positive"
+    if cell_type == "ENTEROCYTE":
+        return "KRT20-positive"
+    return cell_type
+
+
 def main():
     # Load the trajectories
     experiments = list_io.load_experiment_list_file(_DATA_FILE)
     counts = _CountByConditionAndCellType()
     for experiment in experiments:
+        if "secondary only" in experiment.name.get_name():
+            continue  # Skip these experiments
         condition = _get_condition(experiment)
+        print(experiment.name, condition)
         for position in experiment.positions:
             cell_type = position_markers.get_position_type(experiment.position_data, position)
             if cell_type is None:
-                continue
+                cell_type = "UNLABELED"
             counts.add_one(condition, cell_type)
     print(counts._counts)
 
@@ -108,7 +121,7 @@ def main():
             x_values.append(i)
             height_values.append(-counts.get_fraction(condition, cell_type))
         ax.bar(x_values, height_values, bottom=y_offset_values, color=lib_figures.CELL_TYPE_PALETTE[cell_type],
-               label=lib_figures.style_cell_type_name(cell_type))
+               label=_get_immunostained_names(cell_type))
         y_offset_values += height_values
 
     for i, condition in enumerate(_Condition):
