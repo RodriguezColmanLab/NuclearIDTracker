@@ -4,7 +4,7 @@ import scanpy.preprocessing
 import scanpy.tools
 import scipy
 
-import figure_lib
+import lib_figures
 
 INPUT_FILE = "../../Data/all_data.h5ad"
 
@@ -12,17 +12,17 @@ def main():
     adata = scanpy.read_h5ad(INPUT_FILE)
 
     # Standard preprocessing
-    adata = figure_lib.standard_preprocess(adata)
+    adata = lib_figures.standard_preprocess(adata)
 
     # Remove cells that we cannot train on
     adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Nicer names
-    adata.var_names = [figure_lib.style_variable_name(var_name) for var_name in adata.var_names]
+    adata.var_names = [lib_figures.style_variable_name(var_name) for var_name in adata.var_names]
     adata.obs["cell_type_training"] = [cell_type.lower() for cell_type in adata.obs["cell_type_training"]]
 
     # Plot!
-    _ = figure_lib.new_figure()
+    _ = lib_figures.new_figure()
     clustering_variables_result = scipy.cluster.hierarchy.linkage(adata.X.T, method="average")
     reordering = scipy.cluster.hierarchy.leaves_list(clustering_variables_result)
     var_names = numpy.array(adata.var_names)
