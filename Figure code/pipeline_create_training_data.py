@@ -8,9 +8,9 @@ import lib_data
 from organoid_tracker.core import TimePoint
 from organoid_tracker.imaging import list_io
 
-_INPUT_FILE = r"../../Data/Training data.autlist"
-_METADATA_NAMES = ["neighbor_distance_variation", "neighbor_distance_median_um", "intensity_factor_local", "neighbor_distance_mean_um", "volume_um3", "volume_um3_local", "solidity", "solidity_local", "surface_um2", "surface_um2_local", "feret_diameter_max_um", "feret_diameter_max_um_local", "intensity_factor", "ellipticity", "ellipticity_local", "extent", "extent_local", "minor_axis_length_um", "minor_axis_length_um_local", "intermediate_axis_length_um", "intermediate_axis_length_um_local", "major_axis_length_um", "major_axis_length_um_local"]
-_OUTPUT_FILE = "../../Data/all_data.h5ad"
+_INPUT_FILE = r"../../Data/Testing data - output - treatments.autlist"
+_METADATA_NAMES = lib_data.STANDARD_METADATA_NAMES
+_OUTPUT_FILE = "../../Data/treatments_data.h5ad"
 
 
 def _convert_cell_type(position_type: Optional[str]) -> str:
