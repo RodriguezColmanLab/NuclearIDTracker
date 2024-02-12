@@ -1,16 +1,23 @@
-from typing import NamedTuple, Dict, Optional, List
+from typing import Iterable
 
+import anndata
 import numpy
+import pandas
+import scanpy.plotting
+from anndata import AnnData
 from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
-from numpy import ndarray
+
+import lib_data
 import lib_figures
+from organoid_tracker.core import TimePoint
+from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
 _DATA_FILE_PREDICTED = "../../Data/Testing data - predictions - treatments - fixed.autlist"
 _DATA_FILE_STAINING = "../../Data/Immunostaining conditions.autlist"
+_FEATURES_PER_STAINING = 5
 _TREATMENT_TRANSLATION = {
     "control": "Control",
     "dapt chir": "+DAPT +CHIR",
@@ -30,109 +37,154 @@ _STAINING_CELL_TYPES = {
 }
 
 
-class _ExperimentAndPosition(NamedTuple):
-    """A combination of experiment name and position."""
-    experiment_name: str
-    position: Position
+def _get_adata_predictions(experiments: Iterable[Experiment]) -> anndata.AnnData:
+    """Gets the raw features, so that we can create a heatmap. Cells are indexed by _get_cell_key."""
+    data_array = list()
+    cell_type_list = list()
+    organoid_list = list()
+    treatment_list = list()
+    cell_names = list()
+    # Collect position data for last 10 time points of each experiment
+    for experiment in experiments:
+        print("Loading", experiment.name)
+        treatment = experiment.name.get_name().split("-")[0]
+        treatment = _TREATMENT_TRANSLATION.get(treatment, treatment)
+        position_data = experiment.position_data
 
-    def treatment(self) -> str:
-        return self.experiment_name.split("-")[0]
+        last_time_point_number = experiment.positions.last_time_point_number()
+        time_points = [TimePoint(last_time_point_number), TimePoint(last_time_point_number - 5),
+                       TimePoint(last_time_point_number - 10), TimePoint(last_time_point_number - 15)]
+        for time_point in time_points:
+            for position in experiment.positions.of_time_point(time_point):
+                position_data_array = lib_data.get_data_array(position_data, position, lib_data.STANDARD_METADATA_NAMES)
+                cell_type = position_data.get_position_data(position, "type")
+                if position_data_array is not None and cell_type is not None:
+                    data_array.append(position_data_array)
+                    cell_type_list.append(cell_type)
+                    organoid_list.append(experiment.name.get_name())
+                    cell_names.append(_get_cell_key(experiment, position))
+                    treatment_list.append(treatment)
+    data_array = numpy.array(data_array, dtype=numpy.float32)
 
+    adata = AnnData(data_array)
+    adata.var_names = lib_data.STANDARD_METADATA_NAMES
+    adata.obs_names = cell_names
+    adata.obs["cell_type"] = pandas.Categorical(cell_type_list)
+    adata.obs["organoid"] = pandas.Categorical(organoid_list)
+    adata.obs["treatment"] = pandas.Categorical(treatment_list)
 
-class _ConfusionMatrix:
-    """A confusion matrix with a fixed list of column names and row names."""
-    predicted_names: List[str]
-    actual_names: List[str]
-    data: ndarray
-
-    def __init__(self, predicted_names: List[str], actual_names: List[str]):
-        self.predicted_names = predicted_names
-        self.actual_names = actual_names
-        self.data = numpy.zeros((len(actual_names), len(predicted_names)), dtype=int)
-
-    def add(self, predicted: str, actual: str):
-        """Add a single count to the confusion matrix."""
-        predicted_index = self.predicted_names.index(predicted)
-        actual_index = self.actual_names.index(actual)
-        self.data[actual_index, predicted_index] += 1
-
-
-def _get_confusion_matrix(cell_types_predicted: Dict[_ExperimentAndPosition, str],
-                          cell_types_staining: Dict[_ExperimentAndPosition, str], treatment: str):
-    """Get the confusion matrix for a specific treatment."""
-    available_cell_types_predicted = [cell_type for cell_type in _PREDICTED_CELL_TYPES.values() if cell_type is not None]
-    available_cell_types_staining = list(_STAINING_CELL_TYPES.values())
-
-    confusion_matrix = _ConfusionMatrix(available_cell_types_predicted, available_cell_types_staining)
-    for experiment_and_position, cell_type_predicted in cell_types_predicted.items():
-        if experiment_and_position.treatment() != treatment:
-            continue
-        cell_type_staining = cell_types_staining.get(experiment_and_position)
-        if cell_type_staining is not None:
-            confusion_matrix.add(cell_type_predicted, cell_type_staining)
-
-    return confusion_matrix
+    return adata
 
 
-def _plot_confusion_matrix(confusion_matrix: _ConfusionMatrix, ax: Axes):
-    # Scale the confusion matrix to percentages
-    confusion_matrix_scaled = confusion_matrix.data
-    for i in range(confusion_matrix_scaled.shape[0]):
-        confusion_matrix_scaled[i, :] = confusion_matrix_scaled[i, :] / confusion_matrix_scaled[i, :].sum() * 100
-
-    # Plot the confusion matrix
-    ax.imshow(confusion_matrix_scaled, cmap="Blues", vmin=0, vmax=80)
-
-    # Add percentages to the cells
-    for i in range(confusion_matrix_scaled.shape[0]):
-        for j in range(confusion_matrix_scaled.shape[1]):
-            color = "black" if confusion_matrix_scaled[i, j] < 50 else "white"
-            ax.text(j, i, f"{round(confusion_matrix_scaled[i, j])}%", ha="center", va="center", color=color)
-
-    # Set the ticks and labels
-    ax.set_xticks(numpy.arange(len(confusion_matrix.predicted_names)))
-    ax.set_xticklabels(confusion_matrix.predicted_names, rotation=45, horizontalalignment="right")
-    ax.set_yticks(numpy.arange(len(confusion_matrix.actual_names)))
-    ax.set_yticklabels(confusion_matrix.actual_names)
-    ax.set_xlabel("Predicted")
-    ax.set_ylabel("Immunostaining")
+def _get_cell_key(experiment: Experiment, position: Position) -> str:
+    return f"{experiment.name}-{int(position.x)}-{int(position.y)}-{int(position.z)}"
 
 
 def main():
-    cell_types_predicted = _get_cell_types_dict(_DATA_FILE_PREDICTED, replacements=_PREDICTED_CELL_TYPES)
-    cell_types_staining = _get_cell_types_dict(_DATA_FILE_STAINING, replacements=_STAINING_CELL_TYPES)
+    # Load both datasets (immunostaining and predicted types)
+    cell_types_staining = _get_staining_table(list_io.load_experiment_list_file(_DATA_FILE_STAINING))
+    measurement_data_predicted = _get_adata_predictions(list_io.load_experiment_list_file(_DATA_FILE_PREDICTED))
+    measurement_data_predicted = lib_figures.standard_preprocess(measurement_data_predicted)
 
-    treatments = list(_TREATMENT_TRANSLATION.keys())
+    # Add the immunostaining to the predicted data, so that we have one dataset with all information
+    combined = pandas.merge(measurement_data_predicted.obs, cell_types_staining, left_index=True, right_index=True,
+                            how="left")
+    measurement_data_predicted.obs["immunostaining"] = combined["immunostaining"]
 
+    # Find the most variable features for each staining
+    stainings = measurement_data_predicted.obs["immunostaining"].dtype.categories
+    treatments = measurement_data_predicted.obs["treatment"].dtype.categories
+    most_variable_featurues_by_staining = dict()
+    for staining_index, staining in enumerate(stainings):
+        data_subset_staining = measurement_data_predicted[measurement_data_predicted.obs["immunostaining"] == staining]
+
+        # Calculate the mean expression for each gene per treatment
+        mean_table = numpy.zeros((len(treatments), len(data_subset_staining.var_names)), dtype=numpy.float32)
+        for j, treatment in enumerate(treatments):
+            data_subset_treatment_staining = data_subset_staining[data_subset_staining.obs["treatment"] == treatment]
+            mean_table[j, :] = data_subset_treatment_staining.X.mean(axis=0)
+
+        # Find the genes with the most variation across the treatments
+        variance = mean_table.var(axis=0)
+        variance_sorted = variance.argsort()[::-1]
+        most_variable_features = variance_sorted[:_FEATURES_PER_STAINING]
+        most_variable_featurues_by_staining[staining] = most_variable_features
+
+    var_names = measurement_data_predicted.var_names
+    for staining, features in most_variable_featurues_by_staining.items():
+        print(f"Most variable features for {staining}:")
+        for feature in features:
+            print(f"  {var_names[feature]}")
+
+    # Now, build the heatmap with treatments as columns, organoids as subcolumns, stainings as rows,
+    # and the most variable features as subrows
+    organoids = measurement_data_predicted.obs["organoid"].dtype.categories
+    heatmap = numpy.zeros((len(stainings) * _FEATURES_PER_STAINING, len(organoids)), dtype=numpy.float32)
+
+    organoids_as_plotted = list()
+    features_as_plotted = list()
+    for staining_index, staining in enumerate(stainings):
+        organoids_as_plotted.clear()  # We only want to list each organoid once on the X axis, not once per staining
+
+        # Find which features we're going to plot
+        for feature_index in most_variable_featurues_by_staining[staining]:
+            features_as_plotted.append(var_names[feature_index])
+
+        heatmap_column = 0
+        data_subset_staining = measurement_data_predicted[measurement_data_predicted.obs["immunostaining"] == staining]
+        for j, treatment in enumerate(treatments):
+            data_subset_treatment_staining = data_subset_staining[data_subset_staining.obs["treatment"] == treatment]
+
+            # Get all organoids in this treatment (even if they don't have any cells of the current staining)
+            data_subset_treatment = measurement_data_predicted[measurement_data_predicted.obs["treatment"] == treatment]
+            organoids_in_treatment = list(set(data_subset_treatment.obs["organoid"]))
+
+            for k, organoid in enumerate(organoids_in_treatment):
+                data_subset_organoid = data_subset_treatment_staining[
+                    data_subset_treatment_staining.obs["organoid"] == organoid]
+                if data_subset_organoid.n_obs > 0:
+                    heatmap[staining_index * _FEATURES_PER_STAINING:staining_index * _FEATURES_PER_STAINING
+                            + _FEATURES_PER_STAINING, heatmap_column]\
+                        = data_subset_organoid.X.mean(axis=0)[most_variable_featurues_by_staining[staining]]
+                else:
+                    heatmap[staining_index * _FEATURES_PER_STAINING:staining_index * _FEATURES_PER_STAINING
+                            + _FEATURES_PER_STAINING, heatmap_column] = numpy.nan
+                heatmap_column += 1
+                organoids_as_plotted.append(organoid)
+
+    # Plot the heatmap
     figure = lib_figures.new_figure()
-    axes = numpy.array(figure.subplots((len(treatments) + 1) // 2, 2, sharex=True, sharey=True)).flatten()
-
-    for ax, treatment in zip(axes, treatments):
-        confusion_matrix = _get_confusion_matrix(cell_types_predicted, cell_types_staining, treatment)
-        ax.set_title(_TREATMENT_TRANSLATION.get(treatment, treatment))
-        _plot_confusion_matrix(confusion_matrix, ax)
+    ax = figure.gca()
+    ax.imshow(heatmap, cmap="PiYG_r", vmin=-2, vmax=2)
+    ax.set_xticks(numpy.arange(len(organoids_as_plotted)), organoids_as_plotted, rotation=-45,
+                  horizontalalignment="left")
+    ax.set_yticks(numpy.arange(len(features_as_plotted)), features_as_plotted)
+    # Add annotations for the stainings
+    for i, staining in enumerate(stainings):
+        ax.axhline(i * _FEATURES_PER_STAINING - 0.5, color="black")
+        ax.text(-0.5, i * _FEATURES_PER_STAINING + _FEATURES_PER_STAINING / 2, staining, ha="center", va="center")
     plt.show()
 
 
-def _get_cell_types_dict(data_file: str, *, replacements: Dict[Optional[str], str] = None
-                         ) -> Dict[_ExperimentAndPosition, str]:
+def _get_staining_table(experiments: Iterable[Experiment]) -> pandas.DataFrame:
     """Get a dictionary of cell types for each position in each experiment."""
 
     cell_types_predicted = dict()
-    for experiment in list_io.load_experiment_list_file(data_file):
+    for experiment in experiments:
         print(f"Working on {experiment.name.get_name()}...")
-        experiment_name = experiment.name.get_name()
         position_data = experiment.position_data
 
         for time_point in experiment.positions.time_points():
             for position in experiment.positions.of_time_point(time_point):
                 position_type = position_markers.get_position_type(position_data, position)
-                if replacements is not None:
-                    position_type = replacements.get(position_type, position_type)
+                position_type = _STAINING_CELL_TYPES.get(position_type, position_type)
                 if position_type is None:
                     continue  # Still none after replacements, skip
-                cell_types_predicted[_ExperimentAndPosition(experiment_name, position)] = position_type
-    return cell_types_predicted
+                cell_types_predicted[_get_cell_key(experiment, position)] = position_type
+
+    data_frame = pandas.DataFrame.from_dict(cell_types_predicted, orient="index", columns=["immunostaining"])
+    data_frame["immunostaining"] = pandas.Categorical(data_frame["immunostaining"])
+    return data_frame
 
 
 if __name__ == "__main__":
