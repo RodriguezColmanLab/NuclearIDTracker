@@ -57,7 +57,7 @@ def _get_intensity_against_stem_chance_all(experiments: List[Experiment]) -> Tup
     all_organoid_indices = list()
     for i, experiment in enumerate(experiments):
         lgr5_values, stemness_values = _get_intensity_against_stem_chance_single_experiment(experiment)
-        lgr5_values /= numpy.quantile(lgr5_values, 0.9)
+        #lgr5_values /= numpy.quantile(lgr5_values, 0.9)
 
         for lgr5_value, stemness_value in zip(lgr5_values, stemness_values):
             all_lgr5_values.append(lgr5_value)

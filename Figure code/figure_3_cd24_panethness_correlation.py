@@ -59,7 +59,7 @@ def _get_intensity_against_paneth_chance_all(experiments: List[Experiment], *,
     all_organoid_indices = list()
     for i, experiment in enumerate(experiments):
         cd24_values, panethness_values = _get_intensity_against_paneth_chance_single_experiment(experiment, offset_h)
-        cd24_values /= numpy.quantile(cd24_values, 0.9)
+        #cd24_values /= numpy.quantile(cd24_values, 0.9)
 
         for cd24_value, panethness_value in zip(cd24_values, panethness_values):
             all_cd24_values.append(cd24_value)

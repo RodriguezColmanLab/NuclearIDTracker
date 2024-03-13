@@ -30,10 +30,10 @@ def main():
     scanpy.plotting.heatmap(adata,
                             var_names=var_names[reordering],
                             groupby="cell_type_training",
-                            cmap="PiYG_r",
+                            cmap="bwr",
                             swap_axes=True,
-                            vmin=-2,
-                            vmax=2)
+                            vmin=-4,
+                            vmax=4)
 
 
 if __name__ == "__main__":

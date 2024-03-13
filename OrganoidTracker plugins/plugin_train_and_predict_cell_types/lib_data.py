@@ -36,3 +36,22 @@ def get_data_array(position_data: PositionData, position: Position, input_names:
 
         array[i] = value
     return array
+
+
+def convert_cell_type(position_type: Optional[str]) -> str:
+    """Converts the cell type to one suitable for training. Returns "NONE" if no such type exists.
+    (We're using "NONE" instead of None because that works better with pandas.Categorial.)"""
+    if position_type is None:
+        return "NONE"
+    if position_type == "ENTEROCYTE":
+        return "ENTEROCYTE"
+    if position_type in {"PANETH", "WGA_PLUS"}:
+        return "PANETH"
+    if position_type in {"STEM", "STEM_PUTATIVE"}:
+        return "STEM"
+    if position_type == "MATURE_GOBLET":
+        return "MATURE_GOBLET"
+    if position_type == "STEM_FETAL":
+        return "STEM_FETAL"
+    return "NONE"
+

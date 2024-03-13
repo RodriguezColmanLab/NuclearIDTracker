@@ -16,31 +16,28 @@ INPUT_FILE = "../../Data/all_data.h5ad"
 def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(INPUT_FILE)
-    adata = lib_figures.standard_preprocess(adata, filter=False)
+    adata = lib_figures.standard_preprocess(adata)
 
     # Remove cells that we cannot train on
-    adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    #adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
-    # Do the PCA
+    # Do the LDA
     lda = sklearn.discriminant_analysis.LinearDiscriminantAnalysis()
     plot_coords = lda.fit(adata.X, adata.obs["cell_type_training"]).transform(adata.X)
 
-    # Plot the PCA
-    figure = lib_figures.new_figure(size=(3.5, 2.5))
+    # Plot the LDA
+    figure = lib_figures.new_figure(size=(4.5, 4))
     ax: Axes = figure.gca()
-    ax.scatter(plot_coords[:, 0], plot_coords[:, 1],
-               alpha=0.8, s=12, lw=0,
-               color=[lib_figures.CELL_TYPE_PALETTE[adata.obs["cell_type_training"][i]] for i in
-                      range(len(adata.obs["cell_type_training"]))])
     used_cell_types = adata.obs["cell_type_training"].array.categories
+    for cell_type in used_cell_types:
+        depth = 0 if cell_type == "NONE" else 3
+        mask = adata.obs["cell_type_training"] == cell_type
+        ax.scatter(plot_coords[mask, 0], plot_coords[mask, 1],
+                   s=20, lw=0, zorder=depth,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
 
     ax.set_title("Linear Discriminant Analysis")
-    ax.legend(handles=[
-        Line2D([0], [0], marker='o', alpha=0.8,
-               color=lib_figures.CELL_TYPE_PALETTE[cell_type],
-               label=lib_figures.style_cell_type_name(cell_type),
-               markersize=math.sqrt(12), lw=0)
-        for cell_type in used_cell_types],
+    ax.legend(
         loc='center left', bbox_to_anchor=(1, 0.5)
     )
     ax.set_aspect("equal")

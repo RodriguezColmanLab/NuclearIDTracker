@@ -89,12 +89,7 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
         if cell_type_probabilities is None:
             return 0.8, 0.8, 0.8
 
-        # TODO properly normalize colors
-        color = numpy.array([math.sqrt(cell_type_probabilities[paneth_index]),
-                             cell_type_probabilities[stem_index],
-                             cell_type_probabilities[enterocyte_index]])
-
-        return color[0], color[1], color[2]
+        return lib_figures.get_mixed_cell_type_color(cell_type_names, cell_type_probabilities)
 
     y_min = 0
     y_max = experiment.positions.last_time_point_number() * resolution.time_point_interval_h

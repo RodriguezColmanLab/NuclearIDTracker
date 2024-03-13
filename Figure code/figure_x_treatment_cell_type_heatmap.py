@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Dict
 
 import anndata
 import numpy
@@ -91,24 +91,10 @@ def main():
                             how="left")
     measurement_data_predicted.obs["immunostaining"] = combined["immunostaining"]
 
+
+
     # Find the most variable features for each staining
-    stainings = measurement_data_predicted.obs["immunostaining"].dtype.categories
-    treatments = measurement_data_predicted.obs["treatment"].dtype.categories
-    most_variable_featurues_by_staining = dict()
-    for staining_index, staining in enumerate(stainings):
-        data_subset_staining = measurement_data_predicted[measurement_data_predicted.obs["immunostaining"] == staining]
-
-        # Calculate the mean expression for each gene per treatment
-        mean_table = numpy.zeros((len(treatments), len(data_subset_staining.var_names)), dtype=numpy.float32)
-        for j, treatment in enumerate(treatments):
-            data_subset_treatment_staining = data_subset_staining[data_subset_staining.obs["treatment"] == treatment]
-            mean_table[j, :] = data_subset_treatment_staining.X.mean(axis=0)
-
-        # Find the genes with the most variation across the treatments
-        variance = mean_table.var(axis=0)
-        variance_sorted = variance.argsort()[::-1]
-        most_variable_features = variance_sorted[:_FEATURES_PER_STAINING]
-        most_variable_featurues_by_staining[staining] = most_variable_features
+    most_variable_featurues_by_staining = _find_most_variable_features(measurement_data_predicted)
 
     var_names = measurement_data_predicted.var_names
     for staining, features in most_variable_featurues_by_staining.items():
@@ -119,16 +105,24 @@ def main():
     # Now, build the heatmap with treatments as columns, organoids as subcolumns, stainings as rows,
     # and the most variable features as subrows
     organoids = measurement_data_predicted.obs["organoid"].dtype.categories
+    stainings = measurement_data_predicted.obs["immunostaining"].dtype.categories
+    treatments = list(measurement_data_predicted.obs["treatment"].dtype.categories)
+    treatments.sort(reverse=True)  # This makes control appear on the left
     heatmap = numpy.zeros((len(stainings) * _FEATURES_PER_STAINING, len(organoids)), dtype=numpy.float32)
 
-    organoids_as_plotted = list()
-    features_as_plotted = list()
+    organoids_as_plotted = list()  # Essentially the column names
+    treatments_as_plotted = list()  # The treatments, corresponding to organoids_as_plotted
+    features_as_plotted = list()  # Essentially the row names
+    treatment_separation_lines = list()  # Vertical lines that separate the treatments
     for staining_index, staining in enumerate(stainings):
-        organoids_as_plotted.clear()  # We only want to list each organoid once on the X axis, not once per staining
+
+        # We only want to list each organoid once on the X axis, not once per staining
+        organoids_as_plotted.clear()
+        treatments_as_plotted.clear()
 
         # Find which features we're going to plot
         for feature_index in most_variable_featurues_by_staining[staining]:
-            features_as_plotted.append(var_names[feature_index])
+            features_as_plotted.append(lib_figures.style_variable_name(var_names[feature_index]))
 
         heatmap_column = 0
         data_subset_staining = measurement_data_predicted[measurement_data_predicted.obs["immunostaining"] == staining]
@@ -151,19 +145,61 @@ def main():
                             + _FEATURES_PER_STAINING, heatmap_column] = numpy.nan
                 heatmap_column += 1
                 organoids_as_plotted.append(organoid)
+                treatments_as_plotted.append(treatment)
+
+            treatment_separation_lines.append(len(organoids_as_plotted) - 0.5)
+
+    # Subtract the control values
+    control_indices = numpy.array([treatments_as_plotted[i] == "Control" for i in range(len(treatments_as_plotted))])
+    control_features_average = heatmap[:, control_indices].mean(axis=1)
+    heatmap -= control_features_average[:, numpy.newaxis]
+
+    # Normalize the heatmap per row using the standard deviation
+    # Filter out NaNs, since they would cause the standard deviation to be NaN
+    for row in range(heatmap.shape[0]):
+        row_data = heatmap[row, :]
+        row_data = row_data[~numpy.isnan(row_data)]
+        heatmap[row, :] /= row_data.std()
 
     # Plot the heatmap
     figure = lib_figures.new_figure()
     ax = figure.gca()
-    ax.imshow(heatmap, cmap="PiYG_r", vmin=-2, vmax=2)
+    ax.imshow(heatmap, cmap="RdBu_r", vmin=-5, vmax=5)
     ax.set_xticks(numpy.arange(len(organoids_as_plotted)), organoids_as_plotted, rotation=-45,
                   horizontalalignment="left")
     ax.set_yticks(numpy.arange(len(features_as_plotted)), features_as_plotted)
     # Add annotations for the stainings
     for i, staining in enumerate(stainings):
         ax.axhline(i * _FEATURES_PER_STAINING - 0.5, color="black")
-        ax.text(-0.5, i * _FEATURES_PER_STAINING + _FEATURES_PER_STAINING / 2, staining, ha="center", va="center")
+        ax.text(len(organoids_as_plotted), i * _FEATURES_PER_STAINING + _FEATURES_PER_STAINING / 2, staining,
+                ha="left", va="center", rotation=-45)
+    # Add lines for the treatments
+    for line in treatment_separation_lines:
+        ax.axvline(line, color="black")
     plt.show()
+
+
+def _find_most_variable_features(measurement_data_predicted: AnnData) -> Dict[str, numpy.ndarray]:
+    """Finds the most variable features for each staining across the treatments."""
+    stainings = measurement_data_predicted.obs["immunostaining"].dtype.categories
+    treatments = measurement_data_predicted.obs["treatment"].dtype.categories
+
+    most_variable_featurues_by_staining = dict()
+    for staining_index, staining in enumerate(stainings):
+        data_subset_staining = measurement_data_predicted[measurement_data_predicted.obs["immunostaining"] == staining]
+
+        # Calculate the mean expression for each gene per treatment
+        mean_table = numpy.zeros((len(treatments), len(data_subset_staining.var_names)), dtype=numpy.float32)
+        for j, treatment in enumerate(treatments):
+            data_subset_treatment_staining = data_subset_staining[data_subset_staining.obs["treatment"] == treatment]
+            mean_table[j, :] = data_subset_treatment_staining.X.mean(axis=0)
+
+        # Find the genes with the most variation across the treatments
+        variance = mean_table.var(axis=0)
+        variance_sorted = variance.argsort()[::-1]
+        most_variable_features = variance_sorted[:_FEATURES_PER_STAINING]
+        most_variable_featurues_by_staining[staining] = most_variable_features
+    return most_variable_featurues_by_staining
 
 
 def _get_staining_table(experiments: Iterable[Experiment]) -> pandas.DataFrame:

@@ -11,6 +11,13 @@ from organoid_tracker.core.position_data import PositionData
 STANDARD_METADATA_NAMES = ["neighbor_distance_variation", "neighbor_distance_median_um", "intensity_factor_local", "neighbor_distance_mean_um", "volume_um3", "volume_um3_local", "solidity", "solidity_local", "surface_um2", "surface_um2_local", "feret_diameter_max_um", "feret_diameter_max_um_local", "intensity_factor", "ellipticity", "ellipticity_local", "extent", "extent_local", "minor_axis_length_um", "minor_axis_length_um_local", "intermediate_axis_length_um", "intermediate_axis_length_um_local", "major_axis_length_um", "major_axis_length_um_local"]
 
 
+def should_be_exponential(input_name: str) -> bool:
+    """Returns True if the given input name should be exponential, so that the log-transform during training
+    turns it back. Used for all factors."""
+    return input_name in {"neighbor_distance_variation", "solidity", "sphericity", "ellipticity", "intensity_factor"}\
+           or input_name.endswith("_local")
+
+
 def get_data_array(position_data: PositionData, position: Position, input_names: List[str]) -> Optional[ndarray]:
     """Extract the data array from the given position."""
     array = numpy.empty(len(input_names), dtype=numpy.float32)
@@ -29,10 +36,28 @@ def get_data_array(position_data: PositionData, position: Position, input_names:
         if value is None or value == 0:
             return None  # Abort, a value is missing
 
-        if name in {"neighbor_distance_variation", "solidity", "sphericity", "ellipticity", "intensity_factor"}\
-                or name.endswith("_local"):
+        if should_be_exponential(name):
             # Ratios should be an exponential, as the analysis will log-transform the data
             value = math.exp(value)
 
         array[i] = value
     return array
+
+
+def convert_cell_type(position_type: Optional[str]) -> str:
+    """Converts the cell type to one suitable for training. Returns "NONE" if no such type exists.
+    (We're using "NONE" instead of None because that works better with pandas.Categorial.)"""
+    if position_type is None:
+        return "NONE"
+    if position_type == "ENTEROCYTE":
+        return "ENTEROCYTE"
+    if position_type in {"PANETH", "WGA_PLUS"}:
+        return "PANETH"
+    if position_type in {"STEM", "STEM_PUTATIVE"}:
+        return "STEM"
+    if position_type == "MATURE_GOBLET":
+        return "MATURE_GOBLET"
+    if position_type == "STEM_FETAL":
+        return "STEM_FETAL"
+    return "NONE"
+

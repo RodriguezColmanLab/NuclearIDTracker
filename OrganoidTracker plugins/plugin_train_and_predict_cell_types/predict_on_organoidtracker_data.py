@@ -74,7 +74,7 @@ def _parse_config(config: ConfigFile) -> _ParsedConfig:
 
 
 def create_prediction_script(window: Window):
-    """Creates a segmentation script in the GUI. Called from get_menu_items()."""
+    """Creates a prediction script in the GUI. Called from get_menu_items()."""
     for experiment in window.get_active_experiments():
         if "ellipticity" not in experiment.position_data.get_data_names_and_types():
             raise UserError("Missing extracted parameters", f"You haven't extracted the shape parameters yet from the"
@@ -82,7 +82,7 @@ def create_prediction_script(window: Window):
                                                             f" \"{experiment.name}\". Please do so first.")
 
     # Find model directory
-    if not dialog.prompt_confirmation("Cell type prediction", "We will first ask you where you have stored the cell"
+    if not dialog.popup_message_cancellable("Cell type prediction", "We will first ask you where you have stored the cell"
                                                               " type prediction model.\n\nPlease select the appropriate"
                                                               " folder."):
         return
@@ -92,7 +92,7 @@ def create_prediction_script(window: Window):
     lib_models.load_model(types_model_path)  # Load the model as a test
 
     # Creates an output folder
-    if not dialog.prompt_confirmation("Cell type prediction", "Now we will ask you for an output folder"):
+    if not dialog.popup_message_cancellable("Cell type prediction", "Now we will ask you for an output folder"):
         return
     output_folder = dialog.prompt_save_file("Output folder", [("*", "Folder")])
     if output_folder is None:

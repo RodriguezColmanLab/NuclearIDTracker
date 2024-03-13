@@ -121,6 +121,7 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
         adata_track = lib_figures.standard_preprocess(adata_track, filter=False, scale=False)
         adata_track.X -= numpy.array(adata.var["mean"])
         adata_track.X /= numpy.array(adata.var["std"])
+        adata_track.X = numpy.clip(adata_track.X, -2, 2)
 
         plot_coords = lda.transform(adata_track.X)
         trajectories.append(_Line(plot_coords[:, 0], plot_coords[:, 1],
@@ -132,10 +133,7 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
 def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(LDA_FILE)
-    adata = lib_figures.standard_preprocess(adata, filter=False)
-
-    # Remove cells that we cannot train on
-    adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    adata = lib_figures.standard_preprocess(adata)
 
     # Do the LDA
     lda = LinearDiscriminantAnalysis()
@@ -172,7 +170,7 @@ def main():
 
 def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
     plot_coords = lda.transform(adata.X)
-    background_palette = _desaturate(lib_figures.CELL_TYPE_PALETTE)
+    background_palette = lib_figures.CELL_TYPE_PALETTE
 
     # Plot the LDA
     ax.scatter(plot_coords[:, 0], plot_coords[:, 1],

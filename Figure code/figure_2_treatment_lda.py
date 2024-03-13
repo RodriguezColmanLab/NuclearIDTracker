@@ -25,8 +25,8 @@ LDA_FILE = "../../Data/all_data.h5ad"
 _DATA_FILE = "../../Data/Testing data - output - treatments.autlist"
 
 _WINDOW_HALF_WIDTH_TIME_POINTS = 20
-_BINS = numpy.arange(-10, 10, 0.5)
-_COLORMAP = matplotlib.colors.LinearSegmentedColormap.from_list("histo", [(0, 0, 0, 0), (0, 0, 0, 1)])
+_BINS = numpy.arange(-10, 10, 0.4)
+_COLORMAP = matplotlib.colors.LinearSegmentedColormap.from_list("histo", [(0, 0, 0, 0), (0, 0, 0, 0.7)])
 
 
 class _Condition(Enum):
@@ -120,10 +120,7 @@ def _extract_dots(experiment: Experiment, adata: AnnData, lda: LinearDiscriminan
 def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(LDA_FILE)
-    adata = lib_figures.standard_preprocess(adata, filter=False)
-
-    # Remove cells that we cannot train on
-    adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    adata = lib_figures.standard_preprocess(adata)
 
     # Do the LDA
     lda = LinearDiscriminantAnalysis()
@@ -158,21 +155,17 @@ def main():
 
 def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData, *, legend: bool):
     plot_coords = lda.transform(adata.X)
-    background_palette = _desaturate(lib_figures.CELL_TYPE_PALETTE)
 
     # Plot the LDA
-    ax.scatter(plot_coords[:, 0], plot_coords[:, 1],
-               alpha=0.8, s=15, lw=0,
-               color=[background_palette[adata.obs["cell_type_training"][i]] for i in
-                      range(len(adata.obs["cell_type_training"]))])
     used_cell_types = adata.obs["cell_type_training"].array.categories
+    for cell_type in used_cell_types:
+        depth = -1 if cell_type == "NONE" else 0
+        mask = adata.obs["cell_type_training"] == cell_type
+        ax.scatter(plot_coords[mask, 0], plot_coords[mask, 1],
+                   s=20, lw=0, zorder=depth,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
     if legend:
-        ax.legend(handles=[
-            Line2D([0], [0], marker='o', alpha=0.8,
-                   color=lib_figures.CELL_TYPE_PALETTE[cell_type],
-                   label=lib_figures.style_cell_type_name(cell_type),
-                   markersize=math.sqrt(15), lw=0)
-            for cell_type in used_cell_types],
+        ax.legend(
             loc='center left', bbox_to_anchor=(1, 0.5)
         )
 

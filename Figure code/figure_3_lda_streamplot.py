@@ -101,16 +101,10 @@ class _Streamplot:
         dx_values *= factor
         dy_values *= factor
 
-        # counts_sqrt = np.sqrt(self._counts)
-        # lw = 2 * counts_sqrt / counts_sqrt.max()
-        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1.5, color="black", linewidth=0.75,
-                                  maxlength=0.12, integration_direction="forward")
-
-        # Hide arrows (or dots) where we don't have enough counts
-        # dx_values[self._counts < 5] = numpy.nan
-        # dy_values[self._counts < 5] = numpy.nan
-        # ax.quiver(self._x_coords, self._y_coords, dx_values, dy_values, scale=1, width=0.009,
-        #       headwidth=2.7, headlength=2.7, headaxislength=2.25)
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1, color="white",
+                                  linewidth=3, maxlength=0.12, integration_direction="forward")
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1, color="black",
+                                  linewidth=1, maxlength=0.12, integration_direction="forward")
 
 
 def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
@@ -174,10 +168,7 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
 def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(LDA_FILE)
-    adata = lib_figures.standard_preprocess(adata, filter=False)
-
-    # Remove cells that we cannot train on
-    adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    adata = lib_figures.standard_preprocess(adata)
 
     # Do the LDA
     lda = LinearDiscriminantAnalysis()
@@ -195,7 +186,7 @@ def main():
     # Plot the LDA
     figure = lib_figures.new_figure(size=(3.5, 2.5))
     ax: Axes = figure.gca()
-    ax.set_ylim(5, -5)
+    ax.set_ylim(7, -4)
     ax.set_xlim(-5, 5)
     _plot_lda(ax, lda, adata)
 
@@ -209,14 +200,16 @@ def main():
 
 def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
     plot_coords = lda.transform(adata.X)
-    background_palette = _desaturate(lib_figures.CELL_TYPE_PALETTE)
+    background_palette = lib_figures.CELL_TYPE_PALETTE
 
     # Plot the LDA
-    ax.scatter(plot_coords[:, 0], -plot_coords[:, 1],
-               alpha=0.8, s=8, lw=0,
-               color=[background_palette[adata.obs["cell_type_training"][i]] for i in
-                      range(len(adata.obs["cell_type_training"]))])
     used_cell_types = adata.obs["cell_type_training"].array.categories
+    for cell_type in used_cell_types:
+        depth = -3 if cell_type == "NONE" else 0
+        mask = adata.obs["cell_type_training"] == cell_type
+        ax.scatter(plot_coords[mask, 0], -plot_coords[mask, 1],
+                   s=20, lw=0, zorder=depth,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
     ax.set_title("Linear Discriminant Analysis")
     ax.legend(handles=[
         Line2D([0], [0], marker='o', alpha=0.8,

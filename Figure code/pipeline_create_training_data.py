@@ -13,24 +13,6 @@ _METADATA_NAMES = lib_data.STANDARD_METADATA_NAMES
 _OUTPUT_FILE = "../../Data/treatments_data.h5ad"
 
 
-def _convert_cell_type(position_type: Optional[str]) -> str:
-    """Converts the cell type to one suitable for training. Returns "NONE" if no such type exists.
-    (We're using "NONE" instead of None because that works better with pandas.Categorial.)"""
-    if position_type is None:
-        return "NONE"
-    if position_type == "ENTEROCYTE":
-        return "ENTEROCYTE"
-    if position_type in {"PANETH", "WGA_PLUS"}:
-        return "PANETH"
-    if position_type in {"STEM", "STEM_PUTATIVE"}:
-        return "STEM"
-    if position_type == "MATURE_GOBLET":
-        return "MATURE_GOBLET"
-    if position_type == "STEM_FETAL":
-        return "STEM_FETAL"
-    return "NONE"
-
-
 def main():
     data_array = list()
     cell_type_list = list()
@@ -50,7 +32,7 @@ def main():
             for position in experiment.positions.of_time_point(time_point):
                 position_data_array = lib_data.get_data_array(position_data, position, _METADATA_NAMES)
                 cell_type = position_data.get_position_data(position, "type")
-                cell_type_training = _convert_cell_type(cell_type)
+                cell_type_training = lib_data.convert_cell_type(cell_type)
                 if position_data_array is not None and cell_type is not None:
                     data_array.append(position_data_array)
                     cell_type_list.append(cell_type)
