@@ -45,8 +45,8 @@ def main():
     # Stylize the variable names
     mean_adata.var_names = [lib_figures.style_variable_name(var_name) for var_name in mean_adata.var_names]
 
-    # Sort genes by their mean expression for the control treatment
-    mean_adata = mean_adata[:, mean_adata[mean_adata.obs.treatment == "Control"].X.mean(axis=0).argsort()]
+    # Sort genes by their mean expression across all treatments
+    mean_adata = mean_adata[:, mean_adata.X.mean(axis=0).argsort()]
 
     # Reorder the treatments
     mean_adata.obs["treatment"] = pandas.Categorical(mean_adata.obs["treatment"], categories=_TREATMENT_NAME_TRANSLATION.values())
@@ -54,7 +54,7 @@ def main():
     # Plot the heatmap
     _ = lib_figures.new_figure()
     mean_adata.uns["treatment_colors"] = ["#dfe6e9", "#74b9ff", "#ff7675", "#fdcb6e"]
-    scanpy.plotting.heatmap(mean_adata, var_names=mean_adata.var_names, groupby="treatment", cmap="PiYG_r",
+    scanpy.plotting.heatmap(mean_adata, var_names=mean_adata.var_names, groupby="treatment", cmap="RdBu_r",
                             swap_axes=True, vmin=-2, vmax=2, figsize=(3, 4))
     plt.show()
 
