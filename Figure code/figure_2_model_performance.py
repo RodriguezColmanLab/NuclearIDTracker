@@ -86,7 +86,8 @@ def _evaluate_model() -> Tuple[List[str], _SingleParameterResults]:
     input_output = ModelInputOutput(cell_type_mapping=list(cell_types), input_mapping=list(adata.var_names))
     x_values = adata.X
     y_values = numpy.array(adata.obs["cell_type_training"].cat.codes.array)
-    kfold = KFold(n_splits=_NUM_FOLDS, shuffle=True)
+    random = numpy.random.RandomState(1234)
+    kfold = KFold(n_splits=_NUM_FOLDS, shuffle=True, random_state=random)
     weights_train = _calculate_class_weights(adata.obs["cell_type"])
     results = _SingleParameterResults()
     for train_indices, test_indices in kfold.split(x_values, y_values):
