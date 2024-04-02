@@ -26,6 +26,7 @@ _ANNOTATED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
                         Position(125.56, 294.27, 12.00, time_point_number=331),
                         Position(234.63, 343.08, 8.00, time_point_number=331)]
 
+
 def main():
     plt.rcParams['savefig.dpi'] = 180
 
@@ -76,14 +77,20 @@ def _clip(value: Union[float, ndarray]) -> float:
 def _draw_experiment(ax: Axes, experiment: Experiment):
     resolution = experiment.images.resolution()
     cell_type_names = experiment.global_data.get_data("ct_probabilities")
-    stem_index = cell_type_names.index("STEM")
-    paneth_index = cell_type_names.index("PANETH")
-    enterocyte_index = cell_type_names.index("ENTEROCYTE")
+
+    # Override some colors, for maximal contrast
+    lib_figures.CELL_TYPE_PALETTE["PANETH"] = "#ff0000"
+    lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"] = "#0000ff"
 
     def filter_lineages(starting_track: LinkingTrack):
         return starting_track.find_first_position() in _PLOTTED_LINEAGE_TREES
 
     def color_position(time_point_number: int, track: LinkingTrack) -> MPLColor:
+        # If the time point is the first or last, then we don't want to use the probabilities of that time point
+        # They might be unreliable due to the cell dividing or dying
+        if track.will_divide() and time_point_number + 1 >= track.last_time_point_number():
+            return lib_figures.CELL_TYPE_PALETTE["STEM"]  # Always draw divisions in the color of stem cells
+
         position = track.find_position_at_time_point_number(time_point_number)
         cell_type_probabilities = _search_probabilities(experiment, position)
         if cell_type_probabilities is None:

@@ -28,7 +28,6 @@ _EXPERIMENT_NAME = "x20190926pos01"
 _PLOTTED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
                       Position(125.56, 294.27, 12.00, time_point_number=331),
                       Position(234.63, 343.08, 8.00, time_point_number=331)]
-_WINDOW_HALF_WIDTH_TIME_POINTS = 20
 
 
 class _Line(NamedTuple):
@@ -38,7 +37,7 @@ class _Line(NamedTuple):
     label: int
 
     def resample_5h(self) -> "_Line":
-        indices = (self.time_h / 5).astype(numpy.int32)
+        indices = (self.time_h / 4).astype(numpy.int32)
 
         x_values_new = list()
         y_values_new = list()
@@ -154,14 +153,14 @@ def main():
     _plot_lda(ax, lda, adata)
     for line in trajectories:
         # Plot a line
-        ax.plot(line.x_values, line.y_values, color="#636e72", linewidth=1)
+        ax.plot(line.x_values, line.y_values, color="#636e72", linewidth=1.5, zorder=4)
         # Plot dots along the line
-        ax.scatter(line.x_values[:-1], line.y_values[:-1], color="#636e72", s=6, zorder=4)
-        # Except for the last dot, where we plot an arrow
+        ax.scatter(line.x_values[:-1], line.y_values[:-1], color="#636e72", s=6, zorder=5)
+        # Except for the last dot, where we plot an arrow (the coords are the line part of the arrow)
         ax.arrow(line.x_values[-2], line.y_values[-2],
                  (line.x_values[-1] - line.x_values[-2]),
                  (line.y_values[-1] - line.y_values[-2]),
-                 head_width=0.5, head_length=0.7, width=0.01, linewidth=0, color="black", zorder=5)
+                 head_width=0.5, head_length=0.7, width=0.01, linewidth=0, color="black", zorder=6)
         ax.text(line.x_values[-1], line.y_values[-1], str(line.label))
 
     ax.set_aspect(1)
@@ -170,23 +169,17 @@ def main():
 
 def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
     plot_coords = lda.transform(adata.X)
-    background_palette = lib_figures.CELL_TYPE_PALETTE
 
     # Plot the LDA
-    ax.scatter(plot_coords[:, 0], plot_coords[:, 1],
-               alpha=0.8, s=15, lw=0,
-               color=[background_palette[adata.obs["cell_type_training"][i]] for i in
-                      range(len(adata.obs["cell_type_training"]))])
     used_cell_types = adata.obs["cell_type_training"].array.categories
+    for cell_type in used_cell_types:
+        depth = 2 if cell_type == "NONE" else 3  # The lower, the more in the background
+        mask = adata.obs["cell_type_training"] == cell_type
+        ax.scatter(plot_coords[mask, 0], plot_coords[mask, 1],
+                   s=10, lw=0, zorder=depth,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
     ax.set_title("Linear Discriminant Analysis")
-    ax.legend(handles=[
-        Line2D([0], [0], marker='o', alpha=0.8,
-               color=lib_figures.CELL_TYPE_PALETTE[cell_type],
-               label=lib_figures.style_cell_type_name(cell_type),
-               markersize=math.sqrt(15), lw=0)
-        for cell_type in used_cell_types],
-        loc='center left', bbox_to_anchor=(1, 0.5)
-    )
+    ax.legend()
 
 
 if __name__ == "__main__":

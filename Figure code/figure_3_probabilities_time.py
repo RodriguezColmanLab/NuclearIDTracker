@@ -63,7 +63,7 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
 
 
 def _draw_position(ax: Axes, experiment: Experiment, last_position: Position):
-    resolution = experiment.images.resolution()
+    timings = experiment.images.timings()
     cell_type_names = experiment.global_data.get_data("ct_probabilities")
 
     t_values = list()
@@ -73,7 +73,11 @@ def _draw_position(ax: Axes, experiment: Experiment, last_position: Position):
         if cell_type_probabilities is None:
             continue
 
-        t_values.append(position.time_point_number() * resolution.time_point_interval_h)
+        if len(experiment.links.find_futures(position)) > 1:
+            # Found a cell division, draw a vertical line
+            ax.axvline(timings.get_time_h_since_start(position.time_point_number()), color="gray", linestyle="--")
+
+        t_values.append(timings.get_time_h_since_start(position.time_point_number()))
         for i, cell_type_name in enumerate(cell_type_names):
             probabilities[cell_type_name].append(cell_type_probabilities[i])
 
@@ -84,7 +88,7 @@ def _draw_position(ax: Axes, experiment: Experiment, last_position: Position):
                                                                        lib_figures.CELL_TYPE_PALETTE[cell_type_name]),
                                                                    label=lib_figures.style_cell_type_name(cell_type_name))
     ax.set_ylim(-0.05, 1.05)
-    ax.set_yticks([0, 0.25, 0.5, 0.75, 1])
+    ax.set_yticks([0, 0.33, 0.66, 1])
 
 
 def _parse_color(color: str) -> Color:

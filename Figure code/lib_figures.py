@@ -11,6 +11,7 @@ from organoid_tracker.core.experiment import Experiment
 
 CELL_TYPE_PALETTE = {
     "ENTEROCYTE": "#507B9D",
+    "KRT20_POSITIVE": "#507B9D",
     "ABSORPTIVE_PROGENY": "#0984e3",
     "SECRETORY": "#507B9D",
     "ENTEROENDOCRINE": "#507B9D",
@@ -20,6 +21,7 @@ CELL_TYPE_PALETTE = {
     "WGA_PLUS": "#74b9ff",
     "PANETH": "#F2A18E",
     "STEM": "#B6E0A0",
+    "DOUBLE_NEGATIVE": "#B6E0A0",
     "STEM_PUTATIVE": "#B7E1A1",
     "STEM_FETAL": "#77A2B5",
     "UNLABELED": "#eeeeee",
@@ -63,8 +65,7 @@ def style_variable_name(raw_name: str) -> str:
 def new_figure(size: Tuple[float, float] = (4, 3)) -> Figure:
     plt.rcParams["savefig.dpi"] = 300
     plt.rcParams["axes.edgecolor"] = "#2d3436"
-    plt.rcParams["axes.linewidth"] = 1.5
-    plt.rcParams["figure.autolayout"] = True
+    plt.rcParams["axes.linewidth"] = 1
     plt.rcParams["font.family"] = "Arial"
     plt.rcParams["font.size"] = 8
     plt.rcParams['svg.fonttype'] = 'none'

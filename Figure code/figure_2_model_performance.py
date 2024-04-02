@@ -88,7 +88,7 @@ def _evaluate_model() -> Tuple[List[str], _SingleParameterResults]:
     y_values = numpy.array(adata.obs["cell_type_training"].cat.codes.array)
     random = numpy.random.RandomState(1234)
     kfold = KFold(n_splits=_NUM_FOLDS, shuffle=True, random_state=random)
-    weights_train = _calculate_class_weights(adata.obs["cell_type"])
+    weights_train = _calculate_class_weights(adata.obs["cell_type_training"])
     results = _SingleParameterResults()
     for train_indices, test_indices in kfold.split(x_values, y_values):
         # Build and train the model
