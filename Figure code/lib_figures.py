@@ -87,9 +87,21 @@ def style_cell_type_name(cell_type_name: str) -> str:
 
 
 def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]):
+    highest_probability = max(cell_type_probabilities)
+    probability_max_plotting = highest_probability
+    probability_min_plotting = highest_probability * 0.75
+
+    scaled_probabilities = [
+        _clip((probability - probability_min_plotting) / (probability_max_plotting - probability_min_plotting), 0, 1)
+        for probability in cell_type_probabilities
+    ]
+    scaled_probabilities = [
+        probability / sum(scaled_probabilities) for probability in scaled_probabilities
+    ]
+
     d_items = [
         [CELL_TYPE_PALETTE[cell_type] for cell_type in cell_type_names],
-        cell_type_probabilities
+        scaled_probabilities
     ]
 
     red = int(sum([int(k[1:3], 16) * v for k, v in zip(*d_items)]))
@@ -100,3 +112,13 @@ def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilitie
         return x if len(x) == 2 else '0' + x
 
     return "#" + zero_pad(hex(red)[2:]) + zero_pad(hex(green)[2:]) + zero_pad(hex(blue)[2:])
+
+
+def _clip(number: float, min_number: float, max_number: float) -> float:
+    """Clips a number to a range."""
+    if number < min_number:
+        return min_number
+    if number > max_number:
+        return max_number
+    return number
+

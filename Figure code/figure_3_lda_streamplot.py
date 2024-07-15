@@ -107,31 +107,6 @@ class _Streamplot:
                                   linewidth=1, maxlength=0.12, integration_direction="forward")
 
 
-def _desaturate(colors: Dict[str, str]) -> Dict[str, str]:
-    def desaturate_color(color: str):
-        r, g, b = matplotlib.colors.to_rgb(color)
-
-        # Desaturate
-        factor = 0.4
-        luma = 0.3 * r + 0.6 * g + 0.1 * b
-        new_r = r + factor * (luma - r)
-        new_g = g + factor * (luma - g)
-        new_b = b + factor * (luma - b)
-        r, g, b = new_r, new_g, new_b
-
-        # Make brighter
-        adder = 0.5 if numpy.mean([r, g, b]) < 0.5 else 0.2
-        r = min(1, r + adder)
-        g = min(1, g + adder)
-        b = min(1, b + adder)
-
-        return matplotlib.colors.to_hex((r, g, b))
-
-    return dict([
-        (key, desaturate_color(color)) for key, color in colors.items()
-    ])
-
-
 def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDiscriminantAnalysis, streamplot: _Streamplot):
     input_names = list(adata.var_names)
     resolution = experiment.images.resolution()
@@ -200,7 +175,6 @@ def main():
 
 def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
     plot_coords = lda.transform(adata.X)
-    background_palette = lib_figures.CELL_TYPE_PALETTE
 
     # Plot the LDA
     used_cell_types = adata.obs["cell_type_training"].array.categories
