@@ -11,8 +11,8 @@ from numpy import ndarray
 
 import lib_figures
 
-_GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
-_AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023-05 RK0029 Rutger Measuring CellPose performance\CellPose segmentation"
+_GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
+_AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\CellPose segmentation"
 
 
 class _GroundTruthImage:
