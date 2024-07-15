@@ -59,11 +59,7 @@ class _ProbabilitiesOverTime:
 class CellTypeVisualizer(ExitableImageVisualizer):
     """Used to find how the cell type changes over time. Double-click on a cell to view its cell type probabilities."""
 
-    def _on_mouse_click(self, event: MouseEvent):
-        if not event.dblclick:
-            super()._on_mouse_click(event)
-            return
-
+    def _on_mouse_single_click(self, event: MouseEvent):
         position = self._get_position_at(event.xdata, event.ydata)
         if position is None:
             self.update_status("No cell found here.")

@@ -189,9 +189,7 @@ class _CellTypeParameterViewer(ExitableImageVisualizer):
         self._parameters = parameters
         self._cell_types_by_position = dict()
 
-    def _on_mouse_click(self, event: MouseEvent):
-        if not event.dblclick:
-            return
+    def _on_mouse_single_click(self, event: MouseEvent):
         selected_position = self._get_position_at(event.xdata, event.ydata)
         if selected_position is None:
             self.get_window().set_status("No cell found at position.")
