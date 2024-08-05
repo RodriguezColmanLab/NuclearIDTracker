@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy
 import pandas
 from anndata import AnnData
@@ -8,9 +6,9 @@ import lib_data
 from organoid_tracker.core import TimePoint
 from organoid_tracker.imaging import list_io
 
-_INPUT_FILE = r"../../Data/Testing data - output - treatments.autlist"
+_INPUT_FILE = r"../../Data/Training data.autlist"
 _METADATA_NAMES = lib_data.STANDARD_METADATA_NAMES
-_OUTPUT_FILE = "../../Data/treatments_data.h5ad"
+_OUTPUT_FILE = "../../Data/all_data.h5ad"
 
 
 def main():

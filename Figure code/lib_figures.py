@@ -41,8 +41,8 @@ def get_min_max_chance_per_cell_type(experiment: Union[Experiment, Iterable[Expe
 
 def standard_preprocess(adata: AnnData, scale: bool = True, log1p: bool = True, filter: bool = True) -> AnnData:
     if filter:
-        adata = adata[adata[:, 'volume_um3'].X > 100, :]
-        adata = adata[adata[:, 'volume_um3'].X < 250, :]
+        adata = adata[adata[:, 'volume_um3'].X > 200, :]
+        adata = adata[adata[:, 'volume_um3'].X < 400, :]
     if log1p:
         scanpy.preprocessing.log1p(adata)
     if scale:

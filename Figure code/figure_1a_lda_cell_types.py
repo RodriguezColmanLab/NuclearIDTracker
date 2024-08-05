@@ -1,12 +1,9 @@
-import math
-
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
 import sklearn.discriminant_analysis
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from matplotlib.lines import Line2D
 
 import lib_figures
 
@@ -33,7 +30,7 @@ def main():
         depth = 0 if cell_type == "NONE" else 3
         mask = adata.obs["cell_type_training"] == cell_type
         ax.scatter(plot_coords[mask, 0], plot_coords[mask, 1],
-                   s=20, lw=0, zorder=depth,
+                   s=10, lw=0, zorder=depth,
                    color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
 
     ax.set_title("Linear Discriminant Analysis")
