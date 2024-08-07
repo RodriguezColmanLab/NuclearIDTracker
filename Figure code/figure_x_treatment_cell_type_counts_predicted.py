@@ -10,7 +10,7 @@ from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
 
-_DATA_FILE = "../../Data/Testing data - output - immunostaining conditions.autlist"
+_DATA_FILE = "../../Data/Testing data - predictions - treatments - fixed.autlist"
 
 
 class _Condition(Enum):
