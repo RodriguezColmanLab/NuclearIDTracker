@@ -64,8 +64,6 @@ def main():
             if cell_type == cell_type_immunostaining:
                 ax.text(x + 0.5, y - 1, lib_figures.style_cell_type_name(cell_type), rotation=90, horizontalalignment="center", verticalalignment="top",
                         color="white")
-                # Highlight the bar
-                # ax.bar([x], [y], color=[(0, 0, 0, 0)], width=1, align="edge", linewidth=3, edgecolor="black")
             else:
                 ax.text(x + 0.5, y + 3, lib_figures.style_cell_type_name(cell_type), rotation=90, horizontalalignment="center")
 
@@ -99,12 +97,6 @@ def _evaluate_model() -> Tuple[List[str], _SingleParameterResults]:
         # Evaluate the model
         predictions = model.predict(x_values[test_indices])
         answers = y_values[test_indices]
-
-        # Only keep predictions where highest is more than 0.1 higher than previuos
-        # predictions_sorted = numpy.partition(predictions, len(cell_types) - 2, axis=1)
-        # keep_predictions = numpy.abs(predictions_sorted[:, -2] - predictions_sorted[:, -1]) > 0.10
-        # predictions = predictions[keep_predictions]
-        # answers = answers[keep_predictions]
 
         confusion_matrix = sklearn.metrics.confusion_matrix(
             answers, numpy.argmax(predictions, axis=1), labels=numpy.arange(len(cell_types)))
