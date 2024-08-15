@@ -20,7 +20,7 @@ def main():
     adata = lib_figures.standard_preprocess(adata, log1p=False, scale=False)
 
     # Remove cells that we cannot train on
-    #adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Print the average of the extent feature for each cell type
     index = list(adata.var_names).index("extent")

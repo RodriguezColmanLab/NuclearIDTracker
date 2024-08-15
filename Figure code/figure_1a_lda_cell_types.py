@@ -16,30 +16,30 @@ def main():
     adata = lib_figures.standard_preprocess(adata)
 
     # Remove cells that we cannot train on
-    #adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Do the LDA
     lda = sklearn.discriminant_analysis.LinearDiscriminantAnalysis()
     plot_coords = lda.fit(adata.X, adata.obs["cell_type_training"]).transform(adata.X)
 
     # Plot the LDA
-    figure = lib_figures.new_figure(size=(4.5, 4))
+    figure = lib_figures.new_figure(size=(4.5, 3.5))
     ax: Axes = figure.gca()
     used_cell_types = adata.obs["cell_type_training"].array.categories
-    for cell_type in used_cell_types:
-        depth = 0 if cell_type == "NONE" else 3
-        mask = adata.obs["cell_type_training"] == cell_type
-        ax.scatter(plot_coords[mask, 0], plot_coords[mask, 1],
-                   s=10, lw=0, zorder=depth,
-                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
+    colors = [lib_figures.CELL_TYPE_PALETTE[cell_type] for cell_type in adata.obs["cell_type_training"]]
+    ax.scatter(plot_coords[:, 0], plot_coords[:, 1], s=15, lw=0, c=colors)
+
 
     ax.set_title("Linear Discriminant Analysis")
-    ax.legend(
-        loc='center left', bbox_to_anchor=(1, 0.5)
-    )
+    # Add legend for all the cell types
+    for cell_type in used_cell_types:
+        ax.scatter([], [], label=lib_figures.style_cell_type_name(cell_type), s=15, lw=0,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type])
+    ax.legend(loc="upper left", bbox_to_anchor=(1, 1), title="Cell type")
     ax.set_aspect("equal")
     ax.set_xticks([])
     ax.set_yticks([])
+    figure.tight_layout()
     plt.show()
 
 
