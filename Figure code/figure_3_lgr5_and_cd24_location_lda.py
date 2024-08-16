@@ -1,22 +1,18 @@
-from typing import Tuple, List, NamedTuple
-
 import numpy
 import scanpy
-import scipy
 from anndata import AnnData
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.lines import Line2D
 from numpy import ndarray
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from typing import List, NamedTuple
 
+import lib_data
 import lib_figures
-from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import intensity_calculator
-import lib_data
 
 _LDA_FILE = "../../Data/all_data.h5ad"
 _EXPERIMENTS_FILE = "../../Data/Testing data - output - CD24 and Lgr5.autlist"
@@ -64,16 +60,15 @@ def main():
     # Make a scatter plot
     figure = plt.figure(figsize=(7, 4.5))
     (ax_stemness, ax_panethness, ax_enterocyteness), (ax_lgr5, ax_cd24, ax_empty) = figure.subplots(2, 3, sharex=True, sharey=True)
-    ax_stemness.set_aspect(1)
 
     # Plot stemness
     ax_stemness.scatter(points.x_values, points.y_values, c=points.stemness_values,
-                        cmap=_create_colormap("STEM"), vmin=0, vmax=1, s=2, lw=0)
+                        cmap=_create_colormap("STEM"), vmin=0, vmax=0.66, s=2, lw=0)
     ax_stemness.set_title("Stem probability")
 
     # Plot Panethness
     ax_panethness.scatter(points.x_values, points.y_values, c=points.panethness_values,
-                          cmap=_create_colormap("PANETH"), vmin=0, vmax=1, s=2, lw=0)
+                          cmap=_create_colormap("PANETH"), vmin=0, vmax=0.66, s=2, lw=0)
     ax_panethness.set_title("Paneth probability")
 
     # Plot Enterocyteness
