@@ -1,7 +1,4 @@
 import math
-from typing import Dict, NamedTuple
-
-import matplotlib.colors
 import numpy
 import numpy as np
 import scanpy.plotting
@@ -13,6 +10,7 @@ from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 from numpy import ndarray
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from typing import NamedTuple
 
 import lib_data
 import lib_figures

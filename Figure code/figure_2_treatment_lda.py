@@ -1,19 +1,18 @@
-import math
 from collections import defaultdict
-from enum import Enum, auto
-from typing import Dict, NamedTuple
 
+import math
 import matplotlib.colors
 import numpy
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
 from anndata import AnnData
+from enum import Enum, auto
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-from matplotlib.lines import Line2D
 from numpy import ndarray
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from typing import Dict, NamedTuple
 
 import lib_data
 import lib_figures

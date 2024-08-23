@@ -1,9 +1,6 @@
-from typing import Dict, List, Optional, Tuple, Iterable
-
 import anndata
 import numpy
 import pandas
-import scanpy
 import scanpy.preprocessing
 import sklearn.metrics
 from anndata import AnnData
@@ -11,9 +8,11 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from numpy import ndarray
 from sklearn.model_selection import KFold
-from lib_models import build_shallow_model, ModelInputOutput
-import lib_figures
+from typing import Dict, List, Optional, Tuple, Iterable
+
 import lib_data
+import lib_figures
+from lib_models import build_shallow_model, ModelInputOutput
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
