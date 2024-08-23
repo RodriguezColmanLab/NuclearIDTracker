@@ -86,10 +86,10 @@ def style_cell_type_name(cell_type_name: str) -> str:
             .replace("paneth", "Paneth").replace("stem fetal", "fetal stem"))
 
 
-def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]):
+def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> str:
     highest_probability = max(cell_type_probabilities)
     probability_max_plotting = highest_probability
-    probability_min_plotting = highest_probability * 0.75
+    probability_min_plotting = highest_probability * 0.97
 
     scaled_probabilities = [
         _clip((probability - probability_min_plotting) / (probability_max_plotting - probability_min_plotting), 0, 1)

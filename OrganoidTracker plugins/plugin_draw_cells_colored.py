@@ -22,8 +22,8 @@ from organoid_tracker.linking import nearby_position_finder
 
 def get_menu_items(window: Window):
     return {
-        "File//Export-Export image//Projection-Max-intensity colored by cell types (slow)...": lambda: _show_colored_image(window),
-        "File//Export-Export movie//Projection-Max-intensity colored by cell types (slow)...": lambda: _show_colored_movie(window)
+        "File//Export-Export image//Projection-Max-intensity colored by cell types...": lambda: _show_colored_image(window),
+        "File//Export-Export movie//Projection-Max-intensity colored by cell types...": lambda: _show_colored_movie(window)
     }
 
 
@@ -206,6 +206,25 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
     return None
 
 
+def _clip(probability: float) -> float:
+    if probability < 0:
+        return 0
+    if probability > 1:
+        return 1
+    return probability
+
+
+def _scale_probabilities(probabilities: List[float]) -> List[float]:
+    # Scales the probabilities so that the max is 1, and everything less than 75% of the max is 0
+    # In this way, we mostly see the dominant cell type
+    max_probability = max(probabilities)
+    min_plotted_probability = max_probability * 0.5
+
+    probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability) for probability in probabilities]
+
+    return [_clip(probability) for probability in probabilities]
+
+
 def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: int, segmentation_image: Image):
     resolution = experiment.images.resolution()
 
@@ -214,7 +233,6 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: 
     min_z = max(0, image_z - 2)
     max_z = image_z + 2
     mask_image = numpy.max(segmentation_image.array[min_z:max_z], axis=0)
-    mask_image = skimage.segmentation.watershed(numpy.zeros_like(mask_image), markers=mask_image)
 
     colored_image = numpy.full(fill_value=0.25, shape=mask_image.shape + (3,), dtype=numpy.float32)
     cell_types = experiment.global_data.get_data("ct_probabilities")
@@ -230,6 +248,7 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: 
         probabilities = _search_probabilities(experiment, position)
         if probabilities is None:
             continue
+        probabilities = _scale_probabilities(probabilities)
 
         # Calculate the desired color
         color = numpy.array([probabilities[cell_types.index("PANETH")],
@@ -244,12 +263,7 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: 
     for i in range(colored_image.shape[-1]):
         colored_image[..., i] = scipy.ndimage.gaussian_filter(colored_image[..., i], 1)
 
-    # Scale colors
-    colored_image -= colored_image.min()
-    colored_image_max = colored_image.max()
-    if colored_image_max > 0:
-        colored_image /= colored_image_max
-
+    numpy.clip(colored_image, 0, 1, out=colored_image)
     return colored_image
 
 

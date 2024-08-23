@@ -41,6 +41,18 @@ def main():
     plt.show()
 
 
+def _scale_probabilities(probabilities: List[float]) -> List[float]:
+    # Scales the probabilities so that the max is 1, and everything less than 50% of the max is 0
+    # In this way, we mostly see the dominant cell type
+
+    max_probability = max(probabilities)
+    min_plotted_probability = max_probability * 0.5
+
+    probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability) for probability in probabilities]
+
+    return [_clip(probability) for probability in probabilities]
+
+
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:
     """Gives the cell type probabilities of the position. If not found, then it checks whether they are there in the
     previous or next time point, and returns those."""
@@ -79,8 +91,7 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
     cell_type_names = experiment.global_data.get_data("ct_probabilities")
 
     # Override some colors, for maximal contrast
-    lib_figures.CELL_TYPE_PALETTE["PANETH"] = "#ff0000"
-    lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"] = "#0000ff"
+    lib_figures.CELL_TYPE_PALETTE["PANETH"] = "#d63031"
 
     def filter_lineages(starting_track: LinkingTrack):
         return starting_track.find_first_position() in _PLOTTED_LINEAGE_TREES
