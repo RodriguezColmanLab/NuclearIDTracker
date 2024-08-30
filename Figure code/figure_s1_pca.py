@@ -23,7 +23,7 @@ def main():
     figure = lib_figures.new_figure(size=(3.5, 2.5))
     ax = figure.gca()
     scanpy.plotting.pca(adata, ax=ax, annotate_var_explained=True, color="cell_type_training",
-                        palette=lib_figures.CELL_TYPE_PALETTE, show=False, s=35, alpha=0.5)
+                        palette=lib_figures.CELL_TYPE_PALETTE, show=False, s=35, alpha=1)
     ax.set_title("Principal Component Analysis")
     plt.show()
 
