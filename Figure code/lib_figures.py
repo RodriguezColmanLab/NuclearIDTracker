@@ -1,7 +1,6 @@
 from typing import Tuple, Dict, Any, Union, Iterable, List
 
 import numpy
-import scanpy.preprocessing
 from anndata import AnnData
 from matplotlib import pyplot as plt
 from matplotlib.figure import Figure
@@ -40,6 +39,7 @@ def get_min_max_chance_per_cell_type(experiment: Union[Experiment, Iterable[Expe
 
 
 def standard_preprocess(adata: AnnData, scale: bool = True, log1p: bool = True, filter: bool = True) -> AnnData:
+    import scanpy.preprocessing
     if filter:
         adata = adata[adata[:, 'volume_um3'].X > 200, :]
         adata = adata[adata[:, 'volume_um3'].X < 400, :]
