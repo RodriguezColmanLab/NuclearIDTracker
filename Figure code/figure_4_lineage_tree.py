@@ -18,10 +18,11 @@ def main():
     plt.rcParams['savefig.dpi'] = 180
 
     experiments = list_io.load_experiment_list_file(_DATA_FILE)
+    experiment_count = list_io.count_experiments_in_list_file(_DATA_FILE)
 
     figure = lib_figures.new_figure()
-    ax = figure.gca()
-    for experiment in experiments:
+    axes = figure.subplots(nrows=experiment_count, ncols=1)
+    for ax, experiment in zip(axes, experiments):
         _draw_experiment(ax, experiment)
     plt.show()
 
