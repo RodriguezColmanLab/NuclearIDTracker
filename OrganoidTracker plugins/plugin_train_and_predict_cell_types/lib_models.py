@@ -92,13 +92,13 @@ class _KerasModel(OurModel):
 
 class _LinearModel(OurModel):
     _input_output: ModelInputOutput
-    _scaler: StandardScaler
-    _logistic_regression: LogisticRegression
+    scaler: StandardScaler
+    logistic_regression: LogisticRegression
 
     def __init__(self, input_output: ModelInputOutput, scaler: StandardScaler, regressor: LogisticRegression):
         self._input_output = input_output
-        self._scaler = scaler
-        self._logistic_regression = regressor
+        self.scaler = scaler
+        self.logistic_regression = regressor
 
     def get_input_output(self) -> ModelInputOutput:
         return self._input_output
@@ -108,26 +108,26 @@ class _LinearModel(OurModel):
         for index, output_class in enumerate(y_train):
             class_weights_array[index] = class_weights[output_class]
 
-        self._logistic_regression.fit(self._scaler.transform(x_train), y_train, sample_weight=class_weights_array)
+        self.logistic_regression.fit(self.scaler.transform(x_train), y_train, sample_weight=class_weights_array)
 
     def evaluate(self, x_test: ndarray, y_test: ndarray) -> Dict[str, float]:
         return {
-            "accuracy": self._logistic_regression.score(self._scaler.transform(x_test), y_test)
+            "accuracy": self.logistic_regression.score(self.scaler.transform(x_test), y_test)
         }
 
     def save(self, folder: str):
         pickle_file = os.path.join(folder, "linear_model_pickled.sav")
         with open(pickle_file, "wb") as handle:
             pickle.dump(self._input_output.to_dict(), handle)
-            pickle.dump(self._scaler, handle)
-            pickle.dump(self._logistic_regression, handle)
+            pickle.dump(self.scaler, handle)
+            pickle.dump(self.logistic_regression, handle)
 
     def predict(self, x_values: ndarray) -> ndarray:
         # Scale and clip the input array
-        x_values = numpy.clip(self._scaler.transform(x_values), -3, 3)
+        x_values = numpy.clip(self.scaler.transform(x_values), -3, 3)
 
         # Do the prediction, obtaining logits
-        probabilities = self._logistic_regression.decision_function(x_values)
+        probabilities = self.logistic_regression.decision_function(x_values)
 
         # Convert from logit to probabilities
         scipy.special.expit(probabilities, out=probabilities)
