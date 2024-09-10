@@ -19,7 +19,7 @@ def main():
 
     # Nicer names
     adata.var_names = [lib_figures.style_variable_name(var_name) for var_name in adata.var_names]
-    adata.obs["cell_type_training"] = [cell_type.lower() for cell_type in adata.obs["cell_type_training"]]
+    adata.obs["cell_type_training"] = [lib_figures.style_cell_type_name(cell_type) for cell_type in adata.obs["cell_type_training"]]
 
     # Plot!
     _ = lib_figures.new_figure()
