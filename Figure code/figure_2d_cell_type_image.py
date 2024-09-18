@@ -102,6 +102,7 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint):
         probabilities = _search_probabilities(experiment, position)
         if probabilities is None:
             continue
+        probabilities = _scale_probabilities(probabilities)
 
         # Calculate the desired color
         color = numpy.array([probabilities[cell_types.index("PANETH")],
@@ -119,6 +120,25 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint):
         colored_image[..., i] /= colored_image[..., i].max()
 
     return colored_image
+
+
+def _scale_probabilities(probabilities: List[float]) -> List[float]:
+    # Scales the probabilities so that the max is 1, and everything less than 75% of the max is 0
+    # In this way, we mostly see the dominant cell type
+    max_probability = max(probabilities)
+    min_plotted_probability = max_probability * 0.5
+
+    probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability) for probability in probabilities]
+
+    return [_clip(probability) for probability in probabilities]
+
+
+def _clip(probability: float) -> float:
+    if probability < 0:
+        return 0
+    if probability > 1:
+        return 1
+    return probability
 
 
 def _get_nuclear_image_2d_gray(experiment: Experiment, time_point: TimePoint) -> ndarray:

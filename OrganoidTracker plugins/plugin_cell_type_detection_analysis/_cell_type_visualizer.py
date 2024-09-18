@@ -103,9 +103,7 @@ class CellTypeVisualizer(ExitableImageVisualizer):
         for cell_type, probabilities in probabiliities.n_most_likely_cell_types(n=4).items():
             color = self._get_color_for_cell_type(cell_type)
             label = cell_type.lower().replace("_", " ") if show_label else None
-            MovingAverage(probabiliities.time_hours, probabilities, window_width=_WINDOW_WIDTH_H,
-                          x_step_size=0.1) \
-                .plot(ax, color=color, label=label)
+            ax.plot(probabiliities.time_hours, probabilities, color=color.to_rgb_floats(), label=label)
 
     def _get_color_for_cell_type(self, cell_type: str) -> Color:
         color = Color.black()

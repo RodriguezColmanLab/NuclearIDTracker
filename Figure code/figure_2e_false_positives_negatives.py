@@ -60,7 +60,7 @@ def main():
         false_negatives = confusion_matrix[:, i].sum() - true_positives
         y_values = [true_positives, false_negatives]
         y_values = [value / sum(y_values) * 100 for value in y_values]
-        ax.bar(i * space_for_bars + 1, y_values[0], color="#27ae60", label="True positives" if i == 0 else None)
+        ax.bar(i * space_for_bars + 1, y_values[0], color=lib_figures.CELL_TYPE_PALETTE["STEM"], label="True positives" if i == 0 else None)
         ax.bar(i * space_for_bars + 2, y_values[1], color="#8e44ad", label="False negatives" if i == 0 else None)
 
     ax.set_xticks([space_for_bars * i + 1.5 for i in range(len(cell_types))])

@@ -1,15 +1,12 @@
-from typing import List, NamedTuple
-
-import numpy
 from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
+from typing import List
 
 import lib_figures
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
-_DATA_FILE = "../../Data/Stem cell regeneration/Dataset - during DT treatment.autlist"
+_DATA_FILE = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
 
 
 class _ProbabilitiesOverTime:

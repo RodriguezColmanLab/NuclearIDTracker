@@ -99,9 +99,9 @@ class _Streamplot:
         dx_values *= factor
         dy_values *= factor
 
-        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1, color="white",
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=1.5, color="white",
                                   linewidth=3, maxlength=0.12, integration_direction="forward")
-        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, -dy_values, density=1, color="black",
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=1.5, color="black",
                                   linewidth=1, maxlength=0.12, integration_direction="forward")
 
 
@@ -142,6 +142,9 @@ def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(LDA_FILE)
     adata = lib_figures.standard_preprocess(adata)
+
+    # Remove cells that we cannot train on
+    adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Do the LDA
     lda = LinearDiscriminantAnalysis()

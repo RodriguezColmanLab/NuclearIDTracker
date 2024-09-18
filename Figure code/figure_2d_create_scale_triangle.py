@@ -45,7 +45,7 @@ def main():
 
 def _scale_probabilities(probabilities: List[float]) -> List[float]:
     max_probability = max(probabilities)
-    min_plotted_probability = max_probability * 0.5
+    min_plotted_probability = 0
 
     probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability) for
                      probability in probabilities]

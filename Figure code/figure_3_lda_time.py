@@ -37,7 +37,7 @@ class _Line(NamedTuple):
     label: int
 
     def resample_5h(self) -> "_Line":
-        indices = (self.time_h / 4).astype(numpy.int32)
+        indices = (self.time_h / 5).astype(numpy.int32)
 
         x_values_new = list()
         y_values_new = list()
@@ -133,6 +133,9 @@ def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(LDA_FILE)
     adata = lib_figures.standard_preprocess(adata)
+
+    # Remove cells that we cannot train on
+    adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Do the LDA
     lda = LinearDiscriminantAnalysis()

@@ -4,6 +4,7 @@ import os
 from typing import Tuple, List, Optional, Iterable, Dict
 
 import numpy
+import scipy
 import skimage.measure
 import tifffile
 from matplotlib import pyplot as plt
@@ -47,9 +48,11 @@ class _GroundTruthImage:
         max_iou = 0
         with_label = None
         for overlapper_id in self._get_overlapping_bounding_box(automatic_nucleus.bbox):
+            # Run over each overlapping bounding box
+
             overlapper = self._regionprops[overlapper_id]
 
-            # First, construct a bounding box
+            # First, construct a union bounding box
             bbox_union = (  # Bbox is min_z, min_y, min_x, max_z, max_y, max_x
                 min(overlapper.bbox[0], automatic_nucleus.bbox[0]),
                 min(overlapper.bbox[1], automatic_nucleus.bbox[1]),
@@ -92,9 +95,7 @@ class _ImageResults:
     """Given intersection of unions and a list of ground truth nuclei, this class calculates the true positives, false
     positives and false negatives."""
     _ground_truth_nuclei_to_z: Dict[int, float]
-    _overlaps: List[
-        Tuple[
-            Optional[int], int, float, float]]  # Ground truth nucleus id, predicted nucleus id, intersection over union
+    _overlaps: List[Tuple[Optional[int], int, float, float]]  # Ground truth nucleus id, predicted nucleus id, intersection over union
 
     def __init__(self, ground_truth_nuclei_to_z: Dict[int, float]):
         self._ground_truth_nuclei_to_z = ground_truth_nuclei_to_z
@@ -194,11 +195,18 @@ def main():
             continue
 
         ground_truth = tifffile.imread(os.path.join(_GROUND_TRUTH_FOLDER, file))
+        ground_truth = _dilate_masks(ground_truth)
         automatic = tifffile.imread(os.path.join(_AUTOMATIC_FOLDER, file))
         results.add_results(_handle_image(ground_truth, automatic))
 
     _plot_by_z(results)
     _plot_by_ioc_cutoff(results)
+
+
+def _dilate_masks(ground_truth: ndarray):
+    expanded = scipy.ndimage.maximum_filter(ground_truth, footprint=scipy.ndimage.generate_binary_structure(3, 1))
+    expanded[ground_truth != 0] = ground_truth[ground_truth != 0]  # Leave original labels intact
+    return expanded
 
 
 def _plot_by_z(results: _OverallResults):

@@ -4,6 +4,7 @@ import os
 from typing import Tuple, List, Optional, Iterable, NamedTuple
 
 import numpy
+import scipy
 import skimage.measure
 import tifffile
 from matplotlib import pyplot as plt
@@ -14,7 +15,7 @@ import lib_figures
 _GROUND_TRUTH_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\Manual segmentation"
 _AUTOMATIC_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\ActiveUnet segmentation"
 _NUCLEUS_FOLDER = r"P:\Rodriguez_Colman\vidi_rodriguez_colman\rkok\data_analysis\2023\2023-05 RK0029 Rutger Measuring CellPose performance\Nucleus images"
-_PICKED_IOU = {30, 60}
+_PICKED_IOU = {40, 80}
 
 
 class _IntersectionResult(NamedTuple):
@@ -127,6 +128,7 @@ def main():
             continue
 
         ground_truth = tifffile.imread(os.path.join(_GROUND_TRUTH_FOLDER, file))
+        ground_truth = _dilate_masks(ground_truth)
         automatic = tifffile.imread(os.path.join(_AUTOMATIC_FOLDER, file))
         nuclei = tifffile.imread(os.path.join(_NUCLEUS_FOLDER, file))
         for result in _find_examples(ground_truth, automatic):
@@ -154,6 +156,12 @@ def main():
             figure.suptitle(f"IoU: {result.iou:.2f}")
 
             plt.show()
+
+
+def _dilate_masks(ground_truth: ndarray):
+    expanded = scipy.ndimage.maximum_filter(ground_truth, footprint=scipy.ndimage.generate_binary_structure(3, 1))
+    expanded[ground_truth != 0] = ground_truth[ground_truth != 0]  # Leave original labels intact
+    return expanded
 
 
 def rgb(red: int, green: int, blue: int) -> Tuple[float, float, float]:
