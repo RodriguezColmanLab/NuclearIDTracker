@@ -1,7 +1,5 @@
-import math
 from typing import List, Optional, Union
 
-import numpy
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from numpy import ndarray
@@ -39,18 +37,6 @@ def main():
             _draw_experiment(ax, experiment)
             break
     plt.show()
-
-
-def _scale_probabilities(probabilities: List[float]) -> List[float]:
-    # Scales the probabilities so that the max is 1, and everything less than 50% of the max is 0
-    # In this way, we mostly see the dominant cell type
-
-    max_probability = max(probabilities)
-    min_plotted_probability = max_probability * 0.5
-
-    probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability) for probability in probabilities]
-
-    return [_clip(probability) for probability in probabilities]
 
 
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:

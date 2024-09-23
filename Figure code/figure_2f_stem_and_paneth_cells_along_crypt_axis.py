@@ -70,7 +70,7 @@ def main():
             time_points_in_window = (time_points_h >= time_start) & (time_points_h < time_end)
             average = MovingAverage(crypt_positions_um[time_points_in_window], stemness[time_points_in_window], window_width=25)
             color = matplotlib.cm.bone_r(time_start / 20 + 0.2)
-            ax.plot(average.x_values, average.mean_values, label=f"{time_start}-{time_end} h", color=color, linewidth=3, zorder=-time_start)
+            ax.plot(average.x_values, average.mean_values, label=f"{time_start}-{time_end} h", color=color, linewidth=3, zorder=time_start)
 
         ax.set_title(f"{crypt_axis.organoid_name}, crypt {crypt_axis.crypt_id}")
         ax.set_xlabel("Position (μm)")

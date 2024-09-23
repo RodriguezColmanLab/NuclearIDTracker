@@ -51,7 +51,7 @@ def convert_cell_type(position_type: Optional[str]) -> str:
         return "NONE"
     if position_type == "ENTEROCYTE":
         return "ENTEROCYTE"
-    if position_type in {"PANETH", "WGA_PLUS"}:
+    if position_type == "PANETH":
         return "PANETH"
     if position_type in {"STEM", "STEM_PUTATIVE"}:
         return "STEM"

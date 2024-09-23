@@ -31,15 +31,16 @@ def main():
 
     figure = lib_figures.new_figure()
     ax = figure.gca()
-    histogram_negatives, bins_negatives = numpy.histogram(panethness_negatives, bins="scott")
-    histogram_negatives = histogram_negatives / histogram_negatives.max()
-    histogram_positives, bins_positives = numpy.histogram(panethness_positives, bins="scott")
-    histogram_positives = histogram_positives / histogram_positives.max()
+    histogram_negatives, bins_negatives = numpy.histogram(panethness_negatives, bins=50)
+    histogram_negatives = histogram_negatives / numpy.max(histogram_negatives)
+    histogram_positives, bins_positives = numpy.histogram(panethness_positives, bins=bins_negatives)
+    histogram_positives = histogram_positives / numpy.max(histogram_positives)
 
     ax.bar(bins_negatives[:-1], histogram_negatives, width=bins_negatives[1] - bins_negatives[0], alpha=0.5, label="CD24 negatives")
     ax.bar(bins_positives[:-1], histogram_positives, width=bins_positives[1] - bins_positives[0], alpha=0.5, label="CD24 positives")
     ax.legend()
-    ax.set_xlabel("Panethness")
+    ax.set_xlim(0, 0.8)
+    ax.set_xlabel("Predicted Paneth likelihood")
     ax.set_ylabel("Relative frequency")
     plt.show()
 

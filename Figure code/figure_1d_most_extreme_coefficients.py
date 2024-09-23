@@ -1,17 +1,6 @@
-from typing import List
-
 import numpy
-import pandas
-import pydeseq2.utils
-import scanpy.tools
-import scanpy.plotting
 from matplotlib import pyplot as plt
-import matplotlib.colors
 from matplotlib.axes import Axes
-from matplotlib.colorbar import Colorbar
-from matplotlib.figure import Figure
-from matplotlib.colors import LinearSegmentedColormap
-from numpy import ndarray
 from sklearn.linear_model import LogisticRegression
 
 import lib_figures
