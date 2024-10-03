@@ -15,7 +15,6 @@ _TREATMENT_TRANSLATION = {
     "control": "Control",
     "dapt chir": "+DAPT +CHIR",
     "EN": "-Rspondin",
-    "chir vpa R2": "+CHIR +VPA"
 }
 _PREDICTED_CELL_TYPES = {
     "ENTEROCYTE": "enterocyte",

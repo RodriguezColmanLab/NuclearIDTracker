@@ -1,35 +1,24 @@
-from sklearn.decomposition import PCA
+import math
 from typing import List, NamedTuple, Optional, Tuple
 
 import numpy
-import scanpy
-import scanpy.preprocessing
-import sklearn
-import sklearn.decomposition
-from anndata import AnnData
 from matplotlib import pyplot as plt
 from numpy import ndarray
 
+import lib_data
+import lib_figures
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
-from organoid_tracker.imaging import io, list_io
-import lib_figures
-import lib_data
+from organoid_tracker.imaging import list_io
 from organoid_tracker.imaging.cropper import crop_2d
 
 _TRACKING_INPUT_FILE = "../../Data/H3K9ac reporter/Tracking data.autlist"
 _NUCLEUS_CHANNEL = ImageChannel(index_one=3)  # For the displayed crops
-_TRAINING_DATA_INPUT_FILE = "../../Data/all_data.h5ad"
 
-_SELECTED_POSITIONS = [
-    Position(159.00, 350.00, 2.00, time_point_number=154),
-    Position(389.48, 368.90, 21.00, time_point_number=154)
-
-]
 _FRET_SIGNAL_KEY = "intensity"
-_FRET_NOISE_MEASUREMENT_PERIOD_H = 5
+_ENTEROCYTENESS_MEASUREMENT_PERIOD_H = 5
 
 
 class _PlottedTrack(NamedTuple):
@@ -39,7 +28,7 @@ class _PlottedTrack(NamedTuple):
     enterocyteness_values: List[float]
     stemness_values: List[float]
     position_names: List[str]
-    pca_coords: ndarray
+    sphericity_values: List[float]
 
     # The indices of the next list don't correspond to the above lists. This list is simply a list of all the
     # division time points
@@ -49,24 +38,24 @@ class _PlottedTrack(NamedTuple):
     first_image: ndarray
     last_image: ndarray
 
-    def get_min_max_fret_noise(self) -> Tuple[float, float]:
+    def get_min_max_enterocyteness(self) -> Tuple[float, float]:
         """Get the minimum and maximum fret noise in the track, measured as the standard deviation over windows of 5h.
         """
         min_time_h = min(self.times_h)
         max_time_h = max(self.times_h)
 
         times_h = numpy.array(self.times_h)
-        fret_values = numpy.array(self.fret_values)
+        enterocyteness_values = numpy.array(self.enterocyteness_values)
 
         # Loop over windows of 5h
-        fret_noise_values = []
+        enterocyteness_in_time_window = []
         time_h = min_time_h
         while time_h < max_time_h:
-            window_mask = (times_h >= time_h) & (times_h < time_h + _FRET_NOISE_MEASUREMENT_PERIOD_H)
+            window_mask = (times_h >= time_h) & (times_h < time_h + _ENTEROCYTENESS_MEASUREMENT_PERIOD_H)
             if numpy.any(window_mask):
-                fret_noise_values.append(numpy.std(fret_values[window_mask], ddof=1))
-            time_h += _FRET_NOISE_MEASUREMENT_PERIOD_H
-        return min(fret_noise_values), max(fret_noise_values)
+                enterocyteness_in_time_window.append(numpy.mean(enterocyteness_values[window_mask]))
+            time_h += _ENTEROCYTENESS_MEASUREMENT_PERIOD_H
+        return min(enterocyteness_in_time_window), max(enterocyteness_in_time_window)
 
 
 def _find_first_time_point_number(track: LinkingTrack) -> int:
@@ -79,17 +68,6 @@ def _find_first_time_point_number(track: LinkingTrack) -> int:
 
 
 def main():
-    adata = scanpy.read_h5ad(_TRAINING_DATA_INPUT_FILE)
-    adata = lib_figures.standard_preprocess(adata)
-
-    # Remove cells that we cannot train on, and then scale
-    adata = adata[adata.obs["cell_type_training"] != "NONE"]
-
-    # Do the PCA
-    print(f"n_samples: {adata.X.shape[0]}, n_features: {adata.X.shape[1]}")
-    pca = sklearn.decomposition.PCA(n_components=adata.X.shape[1])
-    pca.fit(adata.X)
-
     # Load and analyze the tracking data
     plotted_tracks = list()
     for experiment in list_io.load_experiment_list_file(_TRACKING_INPUT_FILE):
@@ -100,30 +78,33 @@ def main():
             if first_time_point_number != experiment.positions.first_time_point_number():
                 continue  # Only analyze tracks that start at the first time point
 
-            analyzed_track = _analyze_track(adata, experiment, track.find_last_position(), pca)
+            analyzed_track = _analyze_track(experiment, track.find_last_position())
             if analyzed_track is not None:
                 plotted_tracks.append(analyzed_track)
 
-    # Find min and max fret noise
-    fret_noise_difference = list()
+    # Find min and max enterocyteness values
+    enterocyteness_differences = list()
     for analyzed_track in plotted_tracks:
-        min_noise, max_noise = analyzed_track.get_min_max_fret_noise()
-        fret_noise_difference.append(max_noise - min_noise)
+        min_enterocyteness, max_enterocyteness = analyzed_track.get_min_max_enterocyteness()
+        print(min_enterocyteness, max_enterocyteness)
+        enterocyteness_differences.append(max_enterocyteness - min_enterocyteness)
 
-    # Find the three lowest and highest fret noise tracks
-    fret_noise_difference = numpy.array(fret_noise_difference)
-    max_indices = numpy.argsort(fret_noise_difference)
-    plotted_tracks = [plotted_tracks[i] for i in max_indices[:5]]
+    # Find the four least and most differentiating tracks
+    enterocyteness_differences = numpy.array(enterocyteness_differences)
+    max_indices = numpy.argsort(enterocyteness_differences)
+    plotted_tracks = [plotted_tracks[i] for i in max_indices[:4]] + [plotted_tracks[i] for i in max_indices[-4:]]
 
     # Plot the selected tracks
-    figure = lib_figures.new_figure(size=(12, 7))
-    axes = figure.subplots(nrows=5, ncols=len(plotted_tracks), sharex=True, sharey="row", squeeze=False)
+    figure = lib_figures.new_figure(size=(12, 6))
+    axes = figure.subplots(nrows=4, ncols=len(plotted_tracks), sharex=True, sharey="row", squeeze=False)
+    axes[1, 0].set_ylabel("FRET signal")
+    axes[2, 0].set_ylabel("Predicted likelihood")
+    axes[3, 0].set_ylabel("Sphericity")
     for i, plotted_track in enumerate(plotted_tracks):
         ax_images = axes[0, i]
         ax_fret = axes[1, i]
         ax_cell_types = axes[2, i]
-        ax_pca_123 = axes[3, i]
-        ax_pca_456 = axes[4, i]
+        ax_sphericity = axes[3, i]
 
         max_x = max(plotted_track.times_h) * 1.1
         ax_images.imshow(plotted_track.first_image, cmap="gray", extent=[0, max_x * 0.48, 0, max_x * 0.48])
@@ -131,25 +112,16 @@ def main():
 
         ax_fret.scatter(plotted_track.times_h, plotted_track.fret_values, color="black", s=5, linewidth=0)
         ax_fret.plot(plotted_track.times_h, plotted_track.fret_values, linewidth=0.5, color="black")
-        ax_fret.set_xlabel("Time (h)")
-        ax_fret.set_ylabel("FRET signal")
-        ax_fret.set_ylim(0.5, 1)
+        ax_fret.set_ylim(0.5, 1.0)
         ax_cell_types.plot(plotted_track.times_h, plotted_track.enterocyteness_values, linewidth=3,
                            color=lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"], label="Enterocyte")
         ax_cell_types.plot(plotted_track.times_h, plotted_track.stemness_values, linewidth=3,
                            color=lib_figures.CELL_TYPE_PALETTE["STEM"], label="Stem")
         ax_cell_types.set_ylim(0, 1)
-        ax_cell_types.set_ylabel("Predicted likelihood")
         ax_cell_types.legend()
-        for pca_axis in range(3):
-            ax_pca_123.plot(plotted_track.times_h, plotted_track.pca_coords[:, pca_axis], label=f"PCA {pca_axis + 1}")
-        for pca_axis in range(3, 6):
-            ax_pca_456.plot(plotted_track.times_h, plotted_track.pca_coords[:, pca_axis], label=f"PCA {pca_axis + 1}")
-        ax_pca_123.set_ylabel("PCA value")
-        ax_pca_456.set_ylabel("PCA value")
-        ax_pca_456.set_xlabel("Time (h)")
-        ax_pca_123.legend()
-        ax_pca_456.legend()
+        ax_sphericity.plot(plotted_track.times_h, plotted_track.sphericity_values)
+        ax_sphericity.set_xlabel("Time (h)")
+        ax_sphericity.set_ylim(0.68, 0.92)
 
         # Add a dotted vertical line for each division
         for j in range(1, axes.shape[0]):
@@ -157,6 +129,7 @@ def main():
             for division_time_h in plotted_track.division_times_h:
                 ax.axvline(division_time_h, color="black", linestyle="--")
 
+    figure.tight_layout()
     plt.show()
 
 
@@ -178,13 +151,11 @@ def _get_crop_image(experiment: Experiment, position: Position) -> ndarray:
     return output_array
 
 
-def _analyze_track(adata: AnnData, experiment: Experiment, origin_position: Position, pca: PCA
-                   ) -> Optional[_PlottedTrack]:
+def _analyze_track(experiment: Experiment, origin_position: Position) -> Optional[_PlottedTrack]:
     """Analyze a track and return the data to plot it, or None if no track was found for this position in the
      experiment."""
     enterocyte_index = experiment.global_data.get_data("ct_probabilities").index("ENTEROCYTE")
     stem_index = experiment.global_data.get_data("ct_probabilities").index("STEM")
-    input_names = list(adata.var_names)
     timings = experiment.images.timings()
 
     final_track = experiment.links.get_track(origin_position)
@@ -193,7 +164,7 @@ def _analyze_track(adata: AnnData, experiment: Experiment, origin_position: Posi
     times_h = []
     enterocyteness_values = []
     stemness_values = []
-    all_position_data = []
+    sphericity_values = []
     position_names = []
     division_times_h = []
     if final_track is None:
@@ -204,7 +175,7 @@ def _analyze_track(adata: AnnData, experiment: Experiment, origin_position: Posi
         for position in reversed(list(track.positions())):
             fret_signal = experiment.position_data.get_position_data(position, _FRET_SIGNAL_KEY)
             ct_probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
-            data_array = lib_data.get_data_array(experiment.position_data, position, input_names)
+            data_array = lib_data.get_data_array(experiment.position_data, position, ["sphericity"])
 
             if fret_signal is not None and ct_probabilities is not None and data_array is not None \
                     and not numpy.any(numpy.isnan(data_array)):
@@ -212,23 +183,11 @@ def _analyze_track(adata: AnnData, experiment: Experiment, origin_position: Posi
                 enterocyteness_values.append(ct_probabilities[enterocyte_index])
                 stemness_values.append(ct_probabilities[stem_index])
                 times_h.append(timings.get_time_h_since_start(position.time_point_number()))
-                all_position_data.append(data_array)
+                sphericity_values.append(math.log(data_array[0]))
                 position_names.append(str(position))
 
-    if len(all_position_data) < 2:
+    if len(sphericity_values) < 2:
         return None  # Not enough data for adata object
-
-    # Calculate the PCA coords of the track
-    adata_track = AnnData(numpy.array(all_position_data))
-    adata_track.var_names = input_names
-    adata_track.obs_names = position_names
-    adata_track.obs["time_h"] = times_h
-
-    # Preprocess, but scale using the same method as used for adata
-    adata_track = lib_figures.standard_preprocess(adata_track, filter=False, scale=False)
-    adata_track.X -= numpy.array(adata.var["mean"])
-    adata_track.X /= numpy.array(adata.var["std"])
-    pca_coords = pca.transform(adata_track.X)
 
     # Collect images
     image_last = _get_crop_image(experiment, final_track.find_last_position())
@@ -236,7 +195,7 @@ def _analyze_track(adata: AnnData, experiment: Experiment, origin_position: Posi
 
     return _PlottedTrack(times_h=times_h, fret_values=fret_values,
                          enterocyteness_values=enterocyteness_values, stemness_values=stemness_values,
-                         position_names=position_names, pca_coords=pca_coords,
+                         position_names=position_names, sphericity_values=sphericity_values,
                          division_times_h=division_times_h, first_image=image_first, last_image=image_last)
 
 

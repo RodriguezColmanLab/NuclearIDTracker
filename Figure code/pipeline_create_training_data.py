@@ -17,6 +17,7 @@ def main():
     cell_type_training_list = list()
     organoid_list = list()
     cell_names = list()
+    time_point_numbers = list()
 
     # Collect position data for last 10 time points of each experiment
     for experiment in list_io.load_experiment_list_file(_INPUT_FILE):
@@ -37,6 +38,7 @@ def main():
                     cell_type_training_list.append(cell_type_training)
                     organoid_list.append(experiment.name.get_name())
                     cell_names.append(f"{experiment.name}-t{position.time_point_number()}-{int(position.x)}-{int(position.y)}-{int(position.z)}")
+                    time_point_numbers.append(position.time_point_number())
 
     data_array = numpy.array(data_array)
     adata = AnnData(data_array)
@@ -45,6 +47,7 @@ def main():
     adata.obs["cell_type"] = pandas.Categorical(cell_type_list)
     adata.obs["cell_type_training"] = pandas.Categorical(cell_type_training_list)
     adata.obs["organoid"] = pandas.Categorical(organoid_list)
+    adata.obs["time_point"] = time_point_numbers
     adata.write_h5ad(_OUTPUT_FILE, compression="gzip")
 
 

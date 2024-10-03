@@ -107,7 +107,7 @@ def main():
 
 
 def _get_nuclear_image_2d_gray(experiment: Experiment, time_point: TimePoint) -> ndarray:
-    image_3d = experiment.get_image_stack(time_point)
+    image_3d = experiment.images.get_image_stack(time_point)
     image_3d = image_3d[0:16]
 
     # Average each z layer with the one above and below it, for nicer-looking max intensity projection

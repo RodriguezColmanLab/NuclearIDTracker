@@ -1,6 +1,8 @@
 import math
 from typing import List, Optional
 
+import anndata
+from anndata import AnnData
 import numpy
 from numpy import ndarray
 
@@ -18,6 +20,17 @@ def should_be_exponential(input_name: str) -> bool:
            or input_name.endswith("_local")
 
 
+def deduplicate_cells(adata: AnnData):
+    """De-duplicates the cells by only taking the ones with the highest time point per organoid. In this way, we have
+    less training data, but the data becomes suitable for statistical tests."""
+    full_mask = numpy.zeros(adata.n_obs, dtype=bool)
+    for organoid in list(adata.obs["organoid"].unique()):
+        mask = adata.obs["organoid"] == organoid
+        max_time_point = adata.obs[mask]["time_point"].max()
+        mask = mask & (adata.obs["time_point"] == max_time_point)
+        full_mask |= mask
+    return adata[full_mask].copy()
+
 def get_data_array(position_data: PositionData, position: Position, input_names: List[str]) -> Optional[ndarray]:
     """Extract the data array from the given position."""
     array = numpy.empty(len(input_names), dtype=numpy.float32)
@@ -27,7 +40,7 @@ def get_data_array(position_data: PositionData, position: Position, input_names:
             # Special case, we need to calculate
             volume = position_data.get_position_data(position, "volume_um3")
             surface = position_data.get_position_data(position, "surface_um2")
-            if volume is not None and surface is not None:
+            if volume is not None and surface is not None and surface > 0:
                 value = math.pi ** (1/3) * (6 * volume) ** (2/3) / surface
         else:
             # Otherwise, just look up
