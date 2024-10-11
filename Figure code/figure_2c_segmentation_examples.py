@@ -145,9 +145,9 @@ def main():
             ground_truth_crop = ground_truth[z, min_y:max_y, min_x:max_x] == result.ground_truth_label
             automatic_crop = automatic[z, min_y:max_y, min_x:max_x] == result.automatic_label
             segmentation_image = numpy.zeros(automatic_crop.shape + (3,), dtype=numpy.float32)
-            segmentation_image[:, :][ground_truth_crop & ~automatic_crop] = rgb(214, 48, 49)  # Only ground truth
-            segmentation_image[:, :][ground_truth_crop & automatic_crop] = rgb(9, 132, 227)  # Overlap
-            segmentation_image[:, :][~ground_truth_crop & automatic_crop] = rgb(108, 92, 231)  # Only prediction
+            segmentation_image[:, :][ground_truth_crop & ~automatic_crop] = rgb(0, 255, 0)  # Only ground truth
+            segmentation_image[:, :][ground_truth_crop & automatic_crop] = rgb(255, 255, 255)  # Overlap
+            segmentation_image[:, :][~ground_truth_crop & automatic_crop] = rgb(255, 0, 255)  # Only prediction
 
             ax_nuclei.imshow(nucleus_crop, cmap="gray")
             ax_segmentation.imshow(segmentation_image)
