@@ -11,13 +11,13 @@ from organoid_tracker.core.typing import MPLColor
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking_analysis.lineage_drawing import LineageDrawing
 
-_DATA_FILE = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
-
+#_DATA_FILE = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
+_DATA_FILE = "../../Data/Control cell tracking/Dataset.autlist"
 
 def main():
     plt.rcParams['savefig.dpi'] = 180
 
-    experiments = list_io.load_experiment_list_file(_DATA_FILE)
+    experiments = list_io.load_experiment_list_file(_DATA_FILE, load_images=False)
     experiment_count = list_io.count_experiments_in_list_file(_DATA_FILE)
 
     figure = lib_figures.new_figure()
@@ -25,19 +25,6 @@ def main():
     for ax, experiment in zip(axes, experiments):
         _draw_experiment(ax, experiment)
     plt.show()
-
-
-def _scale_probabilities(probabilities: List[float]) -> List[float]:
-    # Scales the probabilities so that the max is 1, and everything less than 50% of the max is 0
-    # In this way, we mostly see the dominant cell type
-
-    max_probability = max(probabilities)
-    min_plotted_probability = max_probability * 0.5
-
-    probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability)
-                     for probability in probabilities]
-
-    return [_clip(probability) for probability in probabilities]
 
 
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:
@@ -73,6 +60,30 @@ def _clip(value: Union[float, ndarray]) -> float:
     return float(value)
 
 
+def _find_initial_enterocyteness(experiment: Experiment, track: LinkingTrack) -> float:
+    cell_type_names = experiment.global_data.get_data("ct_probabilities")
+
+    enterocyte_probabilities = list()
+    for i, position in enumerate(track.positions()):
+        probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
+        if probabilities is None:
+            continue
+        enterocyte_probabilities.append(probabilities[cell_type_names.index("ENTEROCYTE")])
+        if i > 5:
+            break
+
+    if len(enterocyte_probabilities) == 0:
+        return 0
+    return sum(enterocyte_probabilities) / len(enterocyte_probabilities)
+
+
+def _last_time_point_number(starting_track: LinkingTrack) -> int:
+    last_time_point_number = starting_track.last_time_point_number()
+    for track in starting_track.find_all_descending_tracks(include_self=False):
+        last_time_point_number = max(last_time_point_number, track.last_time_point_number())
+    return last_time_point_number
+
+
 def _draw_experiment(ax: Axes, experiment: Experiment):
     resolution = experiment.images.resolution()
     cell_type_names = experiment.global_data.get_data("ct_probabilities")
@@ -80,12 +91,12 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
     # Override some colors, for maximal contrast
     lib_figures.CELL_TYPE_PALETTE["PANETH"] = "#d63031"
 
-    first_time_point = experiment.positions.first_time_point()
-    last_time_point = experiment.positions.last_time_point()
+    first_time_point_number = experiment.positions.first_time_point_number()
+    required_time_point_number = experiment.positions.last_time_point_number() / 2
 
     def filter_lineages(starting_track: LinkingTrack):
-        return starting_track.first_time_point() == first_time_point and \
-            (starting_track.will_divide() or starting_track.last_time_point() == last_time_point)
+        return starting_track.first_time_point_number() == first_time_point_number and \
+            _last_time_point_number(starting_track) >= required_time_point_number
 
     def color_position(time_point_number: int, track: LinkingTrack) -> MPLColor:
         # If the time point is the first or last, then we don't want to use the probabilities of that time point
@@ -104,16 +115,19 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
     y_max = experiment.positions.last_time_point_number() * resolution.time_point_interval_h
 
     ax.set_title(experiment.name.get_name())
-    drawer = LineageDrawing(experiment.links)
+    tracks = list(experiment.links.find_starting_tracks())
+    tracks.sort(key=lambda track: _find_initial_enterocyteness(experiment, track), reverse=True)
+    drawer = LineageDrawing(tracks)
     width = drawer.draw_lineages_colored(ax,
                                          color_getter=color_position,
                                          lineage_filter=filter_lineages,
                                          resolution=resolution,
-                                         line_width=3)
+                                         line_width=2)
     ax.set_xticks([])
     ax.set_ylabel("Time (h)")
     ax.set_ylim(y_max + 5, y_min)
     ax.set_xlim(-1, width + 1)
+    #ax.set_facecolor("#dfe6e9")
 
 
 if __name__ == "__main__":

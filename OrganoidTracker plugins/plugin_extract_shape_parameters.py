@@ -184,8 +184,8 @@ class _AnalyzeShapesTask(Task):
         for open_tab, result in zip(self._open_tabs, results):
             position_data = open_tab.experiment.position_data
             # Remove old data
-            for data_name in _SingleCellParam:
-                position_data.delete_data_with_name(data_name.name)
+            for data_name in _get_all_keys():
+                position_data.delete_data_with_name(data_name)
 
             open_tab.experiment.position_data.merge_data(result)
             open_tab.undo_redo.clear()

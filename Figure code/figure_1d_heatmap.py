@@ -32,8 +32,8 @@ def main():
                             groupby="cell_type_training",
                             cmap="bwr",
                             swap_axes=True,
-                            vmin=-4,
-                            vmax=4)
+                            vmin=-3,
+                            vmax=3)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,5 @@
+import colorsys
+
 from typing import Tuple, Dict, Any, Union, Iterable, List
 
 import numpy
@@ -86,32 +88,27 @@ def style_cell_type_name(cell_type_name: str) -> str:
             .replace("paneth", "Paneth").replace("stem fetal", "fetal stem"))
 
 
-def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> str:
-    highest_probability = max(cell_type_probabilities)
-    probability_max_plotting = highest_probability
-    probability_min_plotting = highest_probability * 0.95
+def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> Tuple[float, float, float]:
+    max_probability = max(cell_type_probabilities)
+    min_plotted_probability = max_probability * 0.5
 
-    scaled_probabilities = [
-        _clip((probability - probability_min_plotting) / (probability_max_plotting - probability_min_plotting), 0, 1)
-        for probability in cell_type_probabilities
-    ]
-    scaled_probabilities = [
-        probability / sum(scaled_probabilities) for probability in scaled_probabilities
-    ]
+    cell_type_probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability)
+                     for probability in cell_type_probabilities]
 
-    d_items = [
-        [CELL_TYPE_PALETTE[cell_type] for cell_type in cell_type_names],
-        scaled_probabilities
-    ]
+    cell_type_probabilities = [_clip(probability, 0, 1) for probability in cell_type_probabilities]
+    return (cell_type_probabilities[cell_type_names.index("PANETH")],
+             cell_type_probabilities[cell_type_names.index("STEM")],
+             cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
 
-    red = int(sum([int(k[1:3], 16) * v for k, v in zip(*d_items)]))
-    green = int(sum([int(k[3:5], 16) * v for k, v in zip(*d_items)]))
-    blue = int(sum([int(k[5:7], 16) * v for k, v in zip(*d_items)]))
+    h, l, s = colorsys.rgb_to_hls(cell_type_probabilities[cell_type_names.index("PANETH")],
+                                  cell_type_probabilities[cell_type_names.index("STEM")],
+                                  cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
 
-    def zero_pad(x):
-        return x if len(x) == 2 else '0' + x
+    # Desaturate the saturation channel
+    #s *= 0.7
 
-    return "#" + zero_pad(hex(red)[2:]) + zero_pad(hex(green)[2:]) + zero_pad(hex(blue)[2:])
+    # Convert back to rgb
+    return colorsys.hls_to_rgb(h, l, s)
 
 
 def _clip(number: float, min_number: float, max_number: float) -> float:
