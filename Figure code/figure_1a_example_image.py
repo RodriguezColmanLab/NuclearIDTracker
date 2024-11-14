@@ -16,7 +16,7 @@ def main():
 
         # Crop and project to our area of interest
         image_stack = experiment.images.get_image_stack(TimePoint(277), ImageChannel(index_zero=0))
-        image_stack = image_stack[5:9]
+        image_stack = image_stack[13:16]
 
         # Take brighest three pixels in the depth
         # image_stack.partition(2, axis=0)
@@ -26,7 +26,7 @@ def main():
 
         figure = lib_figures.new_figure()
         ax: Axes = figure.gca()
-        ax.imshow(image[290:460,70:335], cmap="gray")
+        ax.imshow(image[67:355,346:510], cmap="gray")
         ax.set_axis_off()
         plt.show()
 
