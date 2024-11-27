@@ -21,6 +21,9 @@ def main():
     adata.var_names = [lib_figures.style_variable_name(var_name) for var_name in adata.var_names]
     adata.obs["cell_type_training"] = [lib_figures.style_cell_type_name(cell_type) for cell_type in adata.obs["cell_type_training"]]
 
+    # Make the adata object have random ordering of cells
+    adata = adata[numpy.random.permutation(adata.obs_names)]
+
     # Plot!
     _ = lib_figures.new_figure()
     clustering_variables_result = scipy.cluster.hierarchy.linkage(adata.X.T, method="average")
