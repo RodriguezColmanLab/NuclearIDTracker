@@ -17,7 +17,7 @@ from lib_models import build_shallow_model, ModelInputOutput
 _NUM_FOLDS = 5
 _HIDDEN_NEURONS = [0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 _EPOCHS = [1, 2, 3, 4, 5, 6]
-_OUTPUT_FOLDER = "../../Data/Models without extent"
+_OUTPUT_FOLDER = "../../Data/Models"
 _TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
 
 

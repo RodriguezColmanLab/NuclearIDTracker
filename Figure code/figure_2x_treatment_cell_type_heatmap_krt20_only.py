@@ -18,6 +18,12 @@ from organoid_tracker.position_analysis import position_markers
 _DATA_FILE_PREDICTED = "../../Data/Testing data - predictions - treatments - fixed.autlist"
 _DATA_FILE_STAINING = "../../Data/Immunostaining conditions.autlist"
 _FEATURES_PER_STAINING = 5
+
+# Parameters specific to this script
+_SKIPPED_TREATMENTS = ["+CHIR +VPA"]
+_USED_STAININGS = ["KRT20-positive"]
+
+
 _TREATMENT_TRANSLATION = {
     "control": "Control",
     "dapt chir": "+DAPT +CHIR",
@@ -49,6 +55,9 @@ def _get_adata_predictions(experiments: Iterable[Experiment]) -> anndata.AnnData
         print("Loading", experiment.name)
         treatment = experiment.name.get_name().split("-")[0]
         treatment = _TREATMENT_TRANSLATION.get(treatment, treatment)
+        if treatment in _SKIPPED_TREATMENTS:
+            continue  # Skip this treatment, as it didn't work
+
         position_data = experiment.position_data
 
         last_time_point_number = experiment.positions.last_time_point_number()
@@ -105,7 +114,9 @@ def main():
     # Now, build the heatmap with treatments as columns, organoids as subcolumns, stainings as rows,
     # and the most variable features as subrows
     organoids = measurement_data_predicted.obs["organoid"].dtype.categories
-    stainings = measurement_data_predicted.obs["immunostaining"].dtype.categories
+
+    # We only use the lysozym staining with the control and +DAPT +CHIR treatments
+    stainings = _USED_STAININGS
     treatments = list(measurement_data_predicted.obs["treatment"].dtype.categories)
     treatments.sort(reverse=True)  # This makes control appear on the left
     heatmap = numpy.zeros((len(stainings) * _FEATURES_PER_STAINING, len(organoids)), dtype=numpy.float32)

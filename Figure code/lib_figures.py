@@ -64,8 +64,8 @@ def style_variable_name(raw_name: str) -> str:
             .replace("_", " "))
 
 
-def new_figure(size: Tuple[float, float] = (4, 3)) -> Figure:
-    plt.rcParams["savefig.dpi"] = 300
+def new_figure(size: Tuple[float, float] = (4, 3), dpi: int = 300) -> Figure:
+    plt.rcParams["savefig.dpi"] = dpi
     plt.rcParams["axes.edgecolor"] = "#2d3436"
     plt.rcParams["axes.linewidth"] = 1
     plt.rcParams["font.family"] = "Arial"

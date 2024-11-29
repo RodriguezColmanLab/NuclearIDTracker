@@ -60,8 +60,6 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
     return None
 
 
-
-
 def _draw_position(ax: Axes, experiment: Experiment, last_position: Position):
     timings = experiment.images.timings()
     cell_type_names = experiment.global_data.get_data("ct_probabilities")

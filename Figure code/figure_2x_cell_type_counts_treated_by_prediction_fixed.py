@@ -93,7 +93,6 @@ def main():
             counts.add_one(condition, cell_type)
     print(counts._counts)
 
-
     # Plot the counts
     figure = lib_figures.new_figure()
     ax = figure.gca()
