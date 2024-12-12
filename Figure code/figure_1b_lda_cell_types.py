@@ -29,7 +29,6 @@ def main():
     colors = [lib_figures.CELL_TYPE_PALETTE[cell_type] for cell_type in adata.obs["cell_type_training"]]
     ax.scatter(plot_coords[:, 0], plot_coords[:, 1], s=15, lw=0, c=colors)
 
-
     ax.set_title("Linear Discriminant Analysis")
     # Add legend for all the cell types
     for cell_type in used_cell_types:

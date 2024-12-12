@@ -75,7 +75,7 @@ class _Streamplot:
             x_offset = x_start + self._half_width  # So -3 becomes 0
             y_offset = y_start + self._half_width
             x_coord = int(x_offset / (2 * self._half_width) * self._count)
-            y_coord = int((1 - y_offset / (2 * self._half_width)) * self._count)
+            y_coord = int(y_offset / (2 * self._half_width) * self._count)
             if x_coord < 0 or x_coord >= self._count or y_coord < 0 or y_coord >= self._count:
                 continue
 
@@ -162,7 +162,7 @@ def main():
     # Plot the LDA
     figure = lib_figures.new_figure(size=(3.5, 2.5))
     ax: Axes = figure.gca()
-    ax.set_ylim(7, -4)
+    ax.set_ylim(-4, 7)
     ax.set_xlim(-5, 5)
     _plot_lda(ax, lda, adata)
 
@@ -179,21 +179,15 @@ def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
 
     # Plot the LDA
     used_cell_types = adata.obs["cell_type_training"].array.categories
+    colors = [lib_figures.CELL_TYPE_PALETTE[cell_type] for cell_type in adata.obs["cell_type_training"]]
+    ax.scatter(plot_coords[:, 0], plot_coords[:, 1], s=15, lw=0, c=colors)
+
+    # Add legend for all the cell types
     for cell_type in used_cell_types:
-        depth = -3 if cell_type == "NONE" else 0
-        mask = adata.obs["cell_type_training"] == cell_type
-        ax.scatter(plot_coords[mask, 0], -plot_coords[mask, 1],
-                   s=20, lw=0, zorder=depth,
-                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
+        ax.scatter([], [], label=lib_figures.style_cell_type_name(cell_type), s=15, lw=0,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type])
     ax.set_title("Linear Discriminant Analysis")
-    ax.legend(handles=[
-        Line2D([0], [0], marker='o', alpha=0.8,
-               color=lib_figures.CELL_TYPE_PALETTE[cell_type],
-               label=lib_figures.style_cell_type_name(cell_type),
-               markersize=math.sqrt(15), lw=0)
-        for cell_type in used_cell_types],
-        loc='center left', bbox_to_anchor=(1, 0.5)
-    )
+    ax.legend()
 
 
 if __name__ == "__main__":

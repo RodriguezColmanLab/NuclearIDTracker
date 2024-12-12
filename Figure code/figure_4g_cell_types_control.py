@@ -11,6 +11,7 @@ from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
 _DATASET_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
+_MAX_PLOTTED_TIME_POINT = 118  # Makes all experiments have the same length
 
 
 class _CellCountsOverTime:

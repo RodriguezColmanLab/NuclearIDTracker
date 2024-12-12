@@ -175,12 +175,13 @@ def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
 
     # Plot the LDA
     used_cell_types = adata.obs["cell_type_training"].array.categories
+    colors = [lib_figures.CELL_TYPE_PALETTE[cell_type] for cell_type in adata.obs["cell_type_training"]]
+    ax.scatter(plot_coords[:, 0], plot_coords[:, 1], s=15, lw=0, c=colors)
+
+    # Add legend for all the cell types
     for cell_type in used_cell_types:
-        depth = 2 if cell_type == "NONE" else 3  # The lower, the more in the background
-        mask = adata.obs["cell_type_training"] == cell_type
-        ax.scatter(plot_coords[mask, 0], plot_coords[mask, 1],
-                   s=10, lw=0, zorder=depth,
-                   color=lib_figures.CELL_TYPE_PALETTE[cell_type], label=lib_figures.style_cell_type_name(cell_type))
+        ax.scatter([], [], label=lib_figures.style_cell_type_name(cell_type), s=15, lw=0,
+                   color=lib_figures.CELL_TYPE_PALETTE[cell_type])
     ax.set_title("Linear Discriminant Analysis")
     ax.legend()
 

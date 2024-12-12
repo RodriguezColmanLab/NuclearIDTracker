@@ -12,9 +12,10 @@ from organoid_tracker.imaging import list_io
 from organoid_tracker.linking_analysis.lineage_drawing import LineageDrawing
 
 _DATA_FILE = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
-_DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
+#_DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 
 _MAX_PLOTTED_TIME_POINT = 118  # Makes all experiments have the same length
+
 
 def main():
     plt.rcParams['savefig.dpi'] = 180

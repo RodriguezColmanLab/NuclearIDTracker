@@ -99,6 +99,8 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint):
                                                                 around=centroid,
                                                                 resolution=resolution,
                                                                 max_distance_um=20)
+        if position is None:
+            continue
         probabilities = _search_probabilities(experiment, position)
         if probabilities is None:
             continue

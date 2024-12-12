@@ -100,16 +100,6 @@ def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilitie
              cell_type_probabilities[cell_type_names.index("STEM")],
              cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
 
-    h, l, s = colorsys.rgb_to_hls(cell_type_probabilities[cell_type_names.index("PANETH")],
-                                  cell_type_probabilities[cell_type_names.index("STEM")],
-                                  cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
-
-    # Desaturate the saturation channel
-    #s *= 0.7
-
-    # Convert back to rgb
-    return colorsys.hls_to_rgb(h, l, s)
-
 
 def _clip(number: float, min_number: float, max_number: float) -> float:
     """Clips a number to a range."""
