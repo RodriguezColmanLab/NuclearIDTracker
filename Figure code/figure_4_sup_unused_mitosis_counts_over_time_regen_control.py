@@ -36,12 +36,14 @@ def main():
 
     # Analyze the controls
     control_data = list()
-    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_CONTROL):
+    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_CONTROL, max_time_point=_MAX_PLOTTED_TIME_POINT,
+                                                        load_images=False):
         control_data.append(_analyze_experiment(experiment))
 
     # Analyze the regeneration data
     regeneration_data = list()
-    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_REGENERATION):
+    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_REGENERATION, load_images=False,
+                                                        max_time_point=_MAX_PLOTTED_TIME_POINT):
         regeneration_data.append(_analyze_experiment(experiment))
 
     # Plot everything over time
