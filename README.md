@@ -4,7 +4,7 @@
 
 In time lapse imaging, there is a severe limitation in the number of channels one can image simultanously. This prevents the simultanous imaging of multiple cell type reporters, especially when combined with signalling or metabolic reporters. For mouse small intestinal organoids, we noticed that nuclei of different types have a slightly different appearance: enterocyte nuclei are for example more round than stem cell nuclei. Here, we exploit those differences to predict cell type. Therefore, using only the nucleus reporter H2B-mCherry, we are able to predict for each cell at every time point the cell type, giving new insights into organoid development and disease.
 
-The scripts here are based on [OrganoidTracker](https://jvzonlab.github.io/OrganoidTracker/). While we have only tested the scripts on mouse intestinal organoids, in principle they should work on any cell tracking experiment, provided you have segmentation data and cell types available, which indeed morphological differences between cell types.
+The scripts here are based on [OrganoidTracker](https://jvzonlab.github.io/OrganoidTracker/). While we have only tested the scripts on mouse intestinal organoids, in principle they should work on any cell tracking experiment, provided you have segmentation data and cell types available, with morphological differences between cell types.
 
 ![Example image](Documentation/example_image.png)
 <p align="center"><i>Nuclei colored by cell types that were predicted using the nucleus shape</i></p>
