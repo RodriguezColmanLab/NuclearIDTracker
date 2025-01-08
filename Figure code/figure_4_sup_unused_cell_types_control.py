@@ -72,7 +72,7 @@ def _adjust_color(color: MPLColor, experiment_index: int) -> MPLColor:
 
 def main():
     cell_counts = []
-    for experiment in list_io.load_experiment_list_file(_DATASET_FILE, load_images=False):
+    for experiment in list_io.load_experiment_list_file(_DATASET_FILE, load_images=False, max_time_point=_MAX_PLOTTED_TIME_POINT):
         cell_counts.append(_get_cell_counts_over_time(experiment))
 
     # Plot the data
