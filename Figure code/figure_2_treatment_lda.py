@@ -32,6 +32,9 @@ _STAINING_CELL_TYPES = {
     "ENTEROCYTE": "KRT20-positive"
 }
 
+_X_LIMITS = (-5, 7)
+_Y_LIMITS = (4, -9)
+
 class _Condition(Enum):
     CONTROL = auto()
     DAPT_CHIR = auto()
@@ -167,18 +170,17 @@ def main():
     adata_predictions.obs["immunostaining"] = combined["immunostaining"]
 
     # Plot the LDA
-    figure = lib_figures.new_figure(size=(9, 6), dpi=600)
+    figure = lib_figures.new_figure(size=(10, 8), dpi=600)
     conditions = list(_Condition)
     cell_types = adata_predictions.obs["immunostaining"].array.categories
-    axes = numpy.array(figure.subplots(nrows=len(cell_types), ncols=len(conditions), sharex=True, sharey=True)).flatten()
+    axes = numpy.array(figure.subplots(nrows=len(cell_types) + 1, ncols=len(conditions), sharex=True, sharey=True)).flatten()
     for i in range(len(conditions)):
         for j in range(len(cell_types)):
-            is_last = i == len(conditions) - 1 and j == len(cell_types) - 1
             ax = axes[i + j * len(conditions)]
             condition = conditions[i]
             cell_type = cell_types[j]
 
-            _plot_lda(ax, lda, adata, legend=is_last, colors=_desaturate(lib_figures.CELL_TYPE_PALETTE))
+            _plot_lda(ax, lda, adata, legend=False, colors=_desaturate(lib_figures.CELL_TYPE_PALETTE))
 
             # Highlight the cells that are of the current cell type
             cell_type_mask = ((adata_predictions.obs["immunostaining"] == cell_type)
@@ -190,9 +192,23 @@ def main():
             ax.set_title(condition.display_name + " - " + cell_type)
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.set_ylim(4, -8)
-            ax.set_xlim(-4, 7)
+            ax.set_ylim(_Y_LIMITS)
+            ax.set_xlim(_X_LIMITS)
             ax.set_aspect("equal")
+    # Bottom row: show default LDA plot
+    for i in range(len(conditions)):
+        ax = axes[i + len(cell_types) * len(conditions)]
+        if i == 0:
+            # Plot the default LDA
+            _plot_lda(ax, lda, adata, legend=True)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_ylim(_Y_LIMITS)
+            ax.set_xlim(_X_LIMITS)
+            ax.set_aspect("equal")
+        else:
+            # Hide the axis
+            ax.axis("off")
     plt.show()
 
 

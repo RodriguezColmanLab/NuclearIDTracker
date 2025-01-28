@@ -211,7 +211,7 @@ def build_random_forest(input_output: ModelInputOutput, tree_count: int = 100) -
 
 
 def build_shallow_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons: int) -> OurModel:
-    """Builds a shallow model, so with one hidden layer. If hidden_nearons==0, then we have no hidden layer at all, and
+    """Builds a shallow model, so with one hidden layer. If hidden_neurons==0, then we have no hidden layer at all, and
     instead we'll have a linear model."""
     if hidden_neurons == 0:
         # Just use a linear classifier, solved analytically

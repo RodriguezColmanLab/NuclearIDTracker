@@ -69,6 +69,9 @@ def _adjust_color(color: MPLColor, experiment_index: int) -> MPLColor:
     if experiment_index == 0:
         return r * 0.3, g * 0.3, b * 0.3
 
+    if experiment_index == 1:
+        return r * 0.6, g * 0.6, b * 0.6
+
     return r, g, b
 
 
@@ -88,13 +91,13 @@ def main():
         total_cell_counts = cell_count.total_cell_counts()
         ax_stem.plot(cell_count.times_h, cell_count.counts_per_cell_type["STEM"] / total_cell_counts * 100,
                      color=_adjust_color(lib_figures.CELL_TYPE_PALETTE["STEM"], i),
-                     label=f"Organoid {i + 1}", linewidth=2, alpha=0.5 if i == 2 else 1)
+                     label=f"Organoid {i + 1}", linewidth=2, alpha=0.5 if i >= 3 else 1)
         ax_enterocyte.plot(cell_count.times_h, cell_count.counts_per_cell_type["ENTEROCYTE"] / total_cell_counts * 100,
                            color=_adjust_color(lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"], i),
-                           label=f"Organoid {i + 1}", linewidth=2, alpha=0.5 if i == 2 else 1)
+                           label=f"Organoid {i + 1}", linewidth=2, alpha=0.5 if i >= 3 else 1)
         ax_paneth.plot(cell_count.times_h, cell_count.counts_per_cell_type["PANETH"] / total_cell_counts * 100,
                        color=_adjust_color(lib_figures.CELL_TYPE_PALETTE["PANETH"], i),
-                       label=f"Organoid {i + 1}", linewidth=2, alpha=0.5 if i == 2 else 1)
+                       label=f"Organoid {i + 1}", linewidth=2, alpha=0.5 if i >= 3 else 1)
     ax_stem.set_xlabel("Time (h)")
     ax_enterocyte.set_xlabel("Time (h)")
     ax_paneth.set_xlabel("Time (h)")

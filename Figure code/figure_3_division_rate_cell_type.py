@@ -93,6 +93,13 @@ def main():
 
     summed_data = sum(data_by_experiment.values(), _ExperimentData())
 
+    # Filter out data where we have less than 24h of footage
+    summed_data = {cell_type: data for cell_type, data in summed_data.data_by_cell_type.items() if data.hours_seen > 24}
+
+    # Sort by division rate
+    summed_data = {cell_type: data for cell_type, data in sorted(summed_data.items(), reverse=True,
+                                                                 key=lambda x: x[1].divisions_seen / x[1].hours_seen)}
+
     # Make a bar graph, showing the division rate for each cell type
     figure = lib_figures.new_figure()
     ax = figure.gca()
@@ -100,7 +107,7 @@ def main():
 
     hours_seen = [summed_data[cell_type].hours_seen for cell_type in cell_types]
     divisions_seen = [summed_data[cell_type].divisions_seen for cell_type in cell_types]
-    division_rate_h = [divisions / hours if hours > 0 else 0 for hours, divisions in zip(hours_seen, divisions_seen)]
+    division_rate_h = [divisions / hours for hours, divisions in zip(hours_seen, divisions_seen)]
     division_rate_day = [rate * 24 for rate in division_rate_h]
     ax.bar(list(range(len(cell_types))), division_rate_day, color=[lib_figures.CELL_TYPE_PALETTE[cell_type] for cell_type in cell_types])
 
@@ -116,7 +123,7 @@ def main():
         division_rate_day = [rate * 24 for rate in division_rate_h]
         ax.scatter([x] * len(division_rate_day), division_rate_day, color="black", s=10, alpha=0.5, linewidth=0)
 
-    ax.set_ylabel("Division rate (divisions/day)")
+    ax.set_ylabel("Division rate (divisions / cell / day)")
     ax.set_xlabel("Predicted cell type")
     ax.set_xticks(list(range(len(cell_types))))
     ax.set_xticklabels([lib_figures.style_cell_type_name(cell_type) for cell_type in cell_types], rotation=-45,

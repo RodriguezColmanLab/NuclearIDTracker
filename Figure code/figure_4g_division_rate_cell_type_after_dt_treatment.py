@@ -1,4 +1,6 @@
 from collections import defaultdict
+
+import numpy.random
 from typing import Optional, Dict, Iterable
 
 from matplotlib import pyplot as plt
@@ -130,12 +132,14 @@ def main():
         ax.text(x_positions_bars[i], rate, str(divisions_seen[i]), ha="center", va="bottom")
 
     # Add spread of division rates for the control experiment
+    random_generator = numpy.random.Generator(numpy.random.MT19937(seed=1))
     for i, cell_type in enumerate(cell_types):
         hours_seen = [experiment_data[cell_type].hours_seen for experiment_data in control_data_by_experiment.values()]
         divisions_seen = [experiment_data[cell_type].divisions_seen for experiment_data in control_data_by_experiment.values()]
         division_rate_h = [divisions / hours if hours > 0 else 0 for hours, divisions in zip(hours_seen, divisions_seen)]
         division_rate_day = [rate * 24 for rate in division_rate_h]
-        ax.scatter([x_positions_control_bars[i]] * len(division_rate_day), division_rate_day, color="black", s=10, alpha=0.5, linewidth=0)
+        x_positions_scatter_points = random_generator.normal(x_positions_control_bars[i], 0.05, size=len(division_rate_day))
+        ax.scatter(x_positions_scatter_points, division_rate_day, color="black", s=13, linewidth=1, edgecolor="white")
 
     # Add spread of division rates for the regeneration experiment
     for i, cell_type in enumerate(cell_types):
@@ -143,7 +147,8 @@ def main():
         divisions_seen = [experiment_data[cell_type].divisions_seen for experiment_data in regeneration_data_by_experiment.values()]
         division_rate_h = [divisions / hours if hours > 0 else 0 for hours, divisions in zip(hours_seen, divisions_seen)]
         division_rate_day = [rate * 24 for rate in division_rate_h]
-        ax.scatter([x_positions_regeneration_bars[i]] * len(division_rate_day), division_rate_day, color="black", s=10, alpha=0.5, linewidth=0)
+        x_positions_scatter_points = random_generator.normal(x_positions_regeneration_bars[i], 0.05, size=len(division_rate_day))
+        ax.scatter(x_positions_scatter_points, division_rate_day, color="black", s=13, linewidth=1, edgecolor="white")
 
     ax.set_ylabel("Division rate (divisions/day)")
     ax.set_xlabel("Predicted cell type")
