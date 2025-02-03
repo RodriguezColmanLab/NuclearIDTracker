@@ -8,10 +8,10 @@ import lib_figures
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking import cell_division_finder
+from organoid_tracker.position_analysis import position_markers
 
 _DATASET_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"
 _DATASET_FILE_REGENERATION = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
-_MAX_PLOTTED_TIME_POINT = 118  # Makes all experiments have the same length
 
 
 class _MitosisCountsOverTime(NamedTuple):
@@ -40,14 +40,12 @@ def main():
 
     # Analyze the controls
     control_data = list()
-    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_CONTROL, load_images=False,
-                                                        max_time_point=_MAX_PLOTTED_TIME_POINT):
+    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_CONTROL, load_images=False):
         control_data.append(_analyze_experiment(experiment))
 
     # Analyze the regeneration data
     regeneration_data = list()
-    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_REGENERATION, load_images=False,
-                                                        max_time_point=_MAX_PLOTTED_TIME_POINT):
+    for experiment in list_io.load_experiment_list_file(_DATASET_FILE_REGENERATION, load_images=False):
         regeneration_data.append(_analyze_experiment(experiment))
 
     # Plot everything over time
@@ -55,10 +53,10 @@ def main():
     ax = figure.gca()
     for data in control_data:
         cumulative_mitosis_counts = numpy.cumsum(data.mitosis_counts)
-        ax.plot(data.time_hours, cumulative_mitosis_counts / data.cell_counts, label=f"{data.experiment_name} (control)", linestyle="--", linewidth=2)
+        ax.plot(data.time_hours, cumulative_mitosis_counts / data.cell_counts, label=data.experiment_name, linestyle="--", linewidth=2, color="#82bde3")
     for data in regeneration_data:
         cumulative_mitosis_counts = numpy.cumsum(data.mitosis_counts)
-        ax.plot(data.time_hours, cumulative_mitosis_counts / data.cell_counts, label=f"{data.experiment_name} (regeneration)", linewidth=2)
+        ax.plot(data.time_hours, cumulative_mitosis_counts / data.cell_counts, label=data.experiment_name, linewidth=2, color="#9a3a3a")
     ax.set_xlabel("Time (hours)")
     ax.set_ylabel("Cumulative mitosis count / cell count")
     ax.legend()

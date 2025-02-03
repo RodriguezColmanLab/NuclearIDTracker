@@ -6,7 +6,7 @@ import skimage
 import tifffile
 from numpy import ndarray
 
-import figure_lib
+import lib_figures
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.image_loader import ImageChannel
@@ -42,7 +42,7 @@ class _PlottedPositions:
         self._tracks = set(track.find_all_descending_tracks(include_self=True))
 
         # Find min and max probabilities, for coloring
-        self._min_probabilities, self._max_probabilities = figure_lib.get_min_max_chance_per_cell_type(experiment)
+        self._min_probabilities, self._max_probabilities = lib_figures.get_min_max_chance_per_cell_type(experiment)
 
     def is_plotted(self, position: Position) -> bool:
         track = self._experiment.links.get_track(position)

@@ -102,17 +102,16 @@ class _CreateMovieTask(Task):
                  save_file_or_folder: str):
         """save_file_or_folder is a folder if you have multiple experiments, or a file if you only have one."""
         self._experiment_copies = [experiment.copy_selected(images=True, positions=True, position_data=True,
-                                                            global_data=True)
+                                                            global_data=True, name=True)
                                    for experiment in experiments]
         self._nucleus_channel = nucleus_channel
         self._segmentation_channel = segmentation_channel
         self._save_file_or_folder = save_file_or_folder
 
     def compute(self) -> Any:
-        array = None
-
         for j, experiment in enumerate(self._experiment_copies):
             print(f"\nWorking on {experiment.name}...")
+            array = None
             for i, time_point in enumerate(experiment.positions.time_points()):
                 print(time_point.time_point_number(), end="  ")
                 image = _get_image(experiment, time_point, self._nucleus_channel, self._segmentation_channel)

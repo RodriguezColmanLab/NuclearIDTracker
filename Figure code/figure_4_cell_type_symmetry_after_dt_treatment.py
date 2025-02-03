@@ -1,9 +1,8 @@
-from typing import Optional, List, Union, Any
+from typing import Optional, List, Any
 
 import numpy
 from matplotlib import pyplot as plt
 from matplotlib.axes._axes import Axes
-from matplotlib.patches import Arc
 from numpy import ndarray
 
 import lib_figures

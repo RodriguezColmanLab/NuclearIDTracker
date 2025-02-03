@@ -200,6 +200,9 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, 
 
     import skimage.measure
     for time_point in experiment.images.time_points():
+        if len(experiment.positions.of_time_point(time_point)) == 0:
+            continue  # Skip time points without positions
+
         print(f"Working on time point {time_point.time_point_number()}...")
         segmented_image = experiment.images.get_image(time_point, segmentation_channel)
         nuclei_image = experiment.images.get_image(time_point, nucleus_channel)

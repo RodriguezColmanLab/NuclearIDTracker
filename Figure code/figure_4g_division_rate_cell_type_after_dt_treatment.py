@@ -92,6 +92,7 @@ def main():
     figure = lib_figures.new_figure()
     ax = figure.gca()
     cell_types = [cell_type for cell_type in regeneration_summed_data.keys() if regeneration_summed_data[cell_type].hours_seen > 10]
+    cell_types.sort(reverse=True)
 
     hours_seen = list()
     for cell_type in cell_types:
