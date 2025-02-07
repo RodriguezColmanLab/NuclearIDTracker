@@ -41,34 +41,40 @@ def main():
 
     labels_text = []
     labels_x = []
-    cell_cycle_times_control = list()
+    max_cell_cycle_time = 0
+
+    # Plot the control
+    mean_cell_cycle_times_control = list()
     random = numpy.random.Generator(numpy.random.MT19937(seed=1))
     for experiment_name, cell_cycle_times in control_cell_cycle_times.items():
-        ax.scatter(random.normal(loc=x, scale=0.07, size=len(cell_cycle_times)), cell_cycle_times, c="black", s=3, marker="s", alpha=0.6, linewidths=0, zorder=10)
-        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=True, showmedians=False), color="#80E7FE")
-        cell_cycle_times_control.extend(cell_cycle_times)
+        ax.scatter(random.normal(loc=x, scale=0.07, size=len(cell_cycle_times)), cell_cycle_times, c="black", s=4, marker="s", alpha=0.6, linewidths=0, zorder=10)
+        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=True, showmedians=False), color="#b2bec3")
+        mean_cell_cycle_times_control.append(sum(cell_cycle_times) / len(cell_cycle_times))
+        max_cell_cycle_time = max(max_cell_cycle_time, max(cell_cycle_times))
         labels_text.append(experiment_name)
         labels_x.append(x)
         x += 1
 
+    # Plot the regeneration
     x += 1
-    cell_cycle_times_regeneration = list()
+    mean_cell_cycle_times_regeneration = list()
     for experiment_name, cell_cycle_times in regeneration_cell_cycle_times.items():
-        ax.scatter(random.normal(loc=x, scale=0.07, size=len(cell_cycle_times)), cell_cycle_times, c="black", s=3, marker="s", alpha=0.6, linewidths=0, zorder=10)
-        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=True, showmedians=False), color="#FFCF67")
-        cell_cycle_times_regeneration.extend(cell_cycle_times)
+        ax.scatter(random.normal(loc=x, scale=0.07, size=len(cell_cycle_times)), cell_cycle_times, c="black", s=4, marker="s", alpha=0.6, linewidths=0, zorder=10)
+        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=True, showmedians=False), color="#da5855")
+        mean_cell_cycle_times_regeneration.append(sum(cell_cycle_times) / len(cell_cycle_times))
+        max_cell_cycle_time = max(max_cell_cycle_time, max(cell_cycle_times))
         labels_text.append(experiment_name)
         labels_x.append(x)
         x += 1
 
     # Calculate the p-value between cell_cycle_times_control and cell_cycle_times_regeneration using scipy.stats.ttest_ind
-    t_statistic, p_value = ttest_ind(cell_cycle_times_control, cell_cycle_times_regeneration)
-    ax.text(x / 2, 3, f"p = {p_value:.2}", ha="center", va="bottom")
+    t_statistic, p_value = ttest_ind(mean_cell_cycle_times_control, mean_cell_cycle_times_regeneration)
+    ax.text(x / 2, 3, f"p = {p_value:.2f}", ha="center", va="bottom")
 
     ax.set_xticks(labels_x)
     ax.set_xticklabels(labels_text, rotation=-45, ha="left")
     ax.set_ylabel("Cell cycle time (h)")
-    ax.set_ylim(0, max(max(cell_cycle_times_control), max(cell_cycle_times_regeneration)) * 1.1)
+    ax.set_ylim(0, max_cell_cycle_time * 1.1)
     figure.tight_layout()
     plt.show()
 
