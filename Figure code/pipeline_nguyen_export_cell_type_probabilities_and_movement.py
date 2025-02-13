@@ -19,6 +19,7 @@ _DATA_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"
 _OUTPUT_FOLDER = "../../Data/CSV exports Nguyen's format"
 
 _CELL_TYPE_TIME_POINT_COUNT = 10
+_MAX_TRACKS_IN_SEQUENCE = 5
 
 
 def filter_lineages(experiment: Experiment, starting_track: LinkingTrack):
@@ -172,6 +173,15 @@ def _export_tracks(experiment: Experiment, output_file: str, included_starting_t
     table.set_cell(0, 4, "Movement speed (um/h)")
     table.set_cell(0, 5, "Traveled distance (um)")
     table.set_cell(0, 6, "Traveled distance along crypt-villus axis (um)")
+    for i in range(_MAX_TRACKS_IN_SEQUENCE):
+        counting_word = str(i + 1) + "th"
+        if i == 0:
+            counting_word = "First"
+        elif i == 1:
+            counting_word = "Second"
+        elif i == 2:
+            counting_word = "Third"
+        table.set_cell(0, 7 + i, counting_word + " track TZYX")
 
     # Write the rows
     row_number = 1
@@ -199,6 +209,15 @@ def _export_tracks(experiment: Experiment, output_file: str, included_starting_t
             table.set_cell(row_number, 5, str(_get_distance_change_um(track_sequence, resolution)))
             table.set_cell(row_number, 6, str(_get_crypt_axis_change_um(track_sequence, experiment)))
 
+            # Get the tracsk TZYX
+            dict_keys = [track.find_first_position().to_dict_key() for track in track_sequence]
+            while len(dict_keys) < _MAX_TRACKS_IN_SEQUENCE:
+                dict_keys.append("")
+            if len(dict_keys) > _MAX_TRACKS_IN_SEQUENCE:
+                raise ValueError("Too many tracks in sequence")
+            for i, dict_key in enumerate(dict_keys):
+                table.set_cell(row_number, 7 + i, dict_key)
+
             row_number += 1
 
     table.save(output_file)
@@ -212,10 +231,10 @@ def main():
 
 def export_filtered(data_file: str, output_folder_name: str):
     """Exports the (part of) the tracks that passes the filter to the CSV files."""
-    output_folder_regen = os.path.join(_OUTPUT_FOLDER, output_folder_name)
-    os.makedirs(output_folder_regen, exist_ok=True)
+    output_folder = os.path.join(_OUTPUT_FOLDER, output_folder_name)
+    os.makedirs(output_folder, exist_ok=True)
     for experiment in list_io.load_experiment_list_file(data_file, load_images=False):
-        output_file = os.path.join(output_folder_regen, experiment.name.get_save_name() + ".csv")
+        output_file = os.path.join(output_folder, experiment.name.get_save_name() + ".csv")
 
         starting_tracks = {track for track in experiment.links.find_starting_tracks() if filter_lineages(experiment, track)}
 

@@ -13,6 +13,11 @@ _AVERAGING_WINDOW_WIDTH_H = 5
 _DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 
 
+# Tracks shorter than this are ignored. Sometimes, cells move into the field of view to divide, and then are tracked
+# for a very short time. At division, the stemness is very high, so then you get an artificially high division rate.
+_MIN_TRACK_DURATION_H = 2
+
+
 class _CellTypeData:
     hours_seen: float
     divisions_seen: int
@@ -70,7 +75,7 @@ def _find_cell_type(position_data: PositionData, track: LinkingTrack) -> Optiona
 
 
 def main():
-    experiments = list_io.load_experiment_list_file(_DATA_FILE)
+    experiments = list_io.load_experiment_list_file(_DATA_FILE, load_images=False)
 
     # Collect data by cell type
     data_by_experiment = dict()
@@ -86,6 +91,9 @@ def main():
             track_duration_h = timings.get_time_h_since_start(
                 track.last_time_point() + 1) - timings.get_time_h_since_start(track.first_time_point())
 
+            if track_duration_h < _MIN_TRACK_DURATION_H:
+                continue
+
             data_for_cell_type.hours_seen += track_duration_h
             if track.will_divide():
                 data_for_cell_type.divisions_seen += 1
@@ -93,7 +101,7 @@ def main():
 
     summed_data = sum(data_by_experiment.values(), _ExperimentData())
 
-    # Filter out data where we have less than 24h of footage
+    # Filter out cell types where we have less than 24h of footage
     summed_data = {cell_type: data for cell_type, data in summed_data.data_by_cell_type.items() if data.hours_seen > 24}
 
     # Sort by division rate
@@ -113,7 +121,7 @@ def main():
 
     # Add number of divisions to the bars
     for i, rate in enumerate(division_rate_day):
-        ax.text(i, rate, str(divisions_seen[i]), ha="center", va="bottom")
+        ax.text(i, rate, str(int(hours_seen[i] / 24)) + "d", ha="center", va="bottom")
 
     # Add spread of division rates per experiment
     for x, cell_type in enumerate(cell_types):
@@ -121,7 +129,7 @@ def main():
         divisions_seen = [experiment_data[cell_type].divisions_seen for experiment_data in data_by_experiment.values()]
         division_rate_h = [divisions / hours if hours > 0 else 0 for hours, divisions in zip(hours_seen, divisions_seen)]
         division_rate_day = [rate * 24 for rate in division_rate_h]
-        ax.scatter([x] * len(division_rate_day), division_rate_day, color="black", s=10, alpha=0.5, linewidth=0)
+        ax.scatter([x] * len(division_rate_day), division_rate_day, color="black", s=13, linewidth=1, edgecolor="white")
 
     ax.set_ylabel("Division rate (divisions / cell / day)")
     ax.set_xlabel("Predicted cell type")

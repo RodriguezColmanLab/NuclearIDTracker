@@ -214,7 +214,7 @@ def _clip(probability: float) -> float:
 
 
 def _scale_probabilities(probabilities: List[float]) -> List[float]:
-    # Scales the probabilities so that the max is 1, and everything less than 75% of the max is 0
+    # Scales the probabilities so that the max is 1, and everything less than 50% of the max is 0
     # In this way, we mostly see the dominant cell type
     max_probability = max(probabilities)
     min_plotted_probability = max_probability * 0.5

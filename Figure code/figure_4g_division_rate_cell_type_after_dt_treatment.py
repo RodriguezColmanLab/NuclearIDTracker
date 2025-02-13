@@ -17,6 +17,11 @@ _DATASET_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"
 _DATASET_FILE_REGENERATION = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
 
 
+# Tracks shorter than this are ignored. Sometimes, cells move into the field of view to divide, and then are tracked
+# for a very short time. At division, the stemness is very high, so then you get an artificially high division rate.
+_MIN_TRACK_DURATION_H = 2
+
+
 class _CellTypeDivisionRate:
     hours_seen: float
     divisions_seen: int
@@ -130,7 +135,7 @@ def main():
 
     # Add number of divisions to the bars
     for i, rate in enumerate(division_rate_day):
-        ax.text(x_positions_bars[i], rate, str(divisions_seen[i]), ha="center", va="bottom")
+        ax.text(x_positions_bars[i], rate, str(int(hours_seen[i])) + "h", ha="center", va="bottom")
 
     # Add spread of division rates for the control experiment
     random_generator = numpy.random.Generator(numpy.random.MT19937(seed=1))
@@ -175,6 +180,9 @@ def _extract_division_rates(experiment: Experiment) -> _DivisionRates:
         data_for_cell_type = experiment_data[cell_type]
         track_duration_h = timings.get_time_h_since_start(
             track.last_time_point() + 1) - timings.get_time_h_since_start(track.first_time_point())
+
+        if track_duration_h < _MIN_TRACK_DURATION_H:
+            continue
 
         data_for_cell_type.hours_seen += track_duration_h
         if track.will_divide():

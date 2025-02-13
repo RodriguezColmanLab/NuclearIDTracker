@@ -48,7 +48,7 @@ def main():
     random = numpy.random.Generator(numpy.random.MT19937(seed=1))
     for experiment_name, cell_cycle_times in control_cell_cycle_times.items():
         ax.scatter(random.normal(loc=x, scale=0.07, size=len(cell_cycle_times)), cell_cycle_times, c="black", s=4, marker="s", alpha=0.6, linewidths=0, zorder=10)
-        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=True, showmedians=False), color="#b2bec3")
+        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=False, showmedians=True), color="#b2bec3")
         mean_cell_cycle_times_control.append(sum(cell_cycle_times) / len(cell_cycle_times))
         max_cell_cycle_time = max(max_cell_cycle_time, max(cell_cycle_times))
         labels_text.append(experiment_name)
@@ -60,7 +60,7 @@ def main():
     mean_cell_cycle_times_regeneration = list()
     for experiment_name, cell_cycle_times in regeneration_cell_cycle_times.items():
         ax.scatter(random.normal(loc=x, scale=0.07, size=len(cell_cycle_times)), cell_cycle_times, c="black", s=4, marker="s", alpha=0.6, linewidths=0, zorder=10)
-        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=True, showmedians=False), color="#da5855")
+        _color_violin(ax.violinplot([cell_cycle_times], positions=[x], widths=0.7, showextrema=False, showmeans=False, showmedians=True), color="#da5855")
         mean_cell_cycle_times_regeneration.append(sum(cell_cycle_times) / len(cell_cycle_times))
         max_cell_cycle_time = max(max_cell_cycle_time, max(cell_cycle_times))
         labels_text.append(experiment_name)
