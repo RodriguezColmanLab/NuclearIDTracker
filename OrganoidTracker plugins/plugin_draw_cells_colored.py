@@ -142,6 +142,7 @@ def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: I
                segmentation_channel: ImageChannel, background_rgba: Tuple[int, int, int, int] = (0, 0, 0, 255)
                ) -> ndarray:
     segmentation_image = experiment.images.get_image(time_point, segmentation_channel)
+    nucleus_image = experiment.images.get_image(time_point, nucleus_channel)
 
     background_image = numpy.zeros((segmentation_image.shape_y, segmentation_image.shape_x, 4), dtype=numpy.uint8)
     for i in range(4):
@@ -153,7 +154,7 @@ def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: I
     slice_buffer_uint8 = numpy.zeros((segmentation_image.shape_y, segmentation_image.shape_x, 4),
                                      dtype=numpy.uint8)  # 2D RGBA
     for z in range(segmentation_image.limit_z - 1, segmentation_image.min_z - 1, -1):
-        image_nuclei = _get_nuclear_image_2d_gray(experiment, time_point, z, nucleus_channel)
+        image_nuclei = _get_nuclear_image_2d_gray(z, nucleus_image)
         image_colored = _get_cell_types_image_rgb(experiment, time_point, z, segmentation_image)
 
         # Place the image in the temporary slice
@@ -268,10 +269,10 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: 
     return colored_image
 
 
-def _get_nuclear_image_2d_gray(experiment: Experiment, time_point: TimePoint, z: int,
-                               nucleus_channel: ImageChannel) -> ndarray:
-    image = experiment.images.get_image_slice_2d(time_point, nucleus_channel, z)
-    image = image / image.max()
+def _get_nuclear_image_2d_gray(z: int, nucleus_image: Image) -> ndarray:
+    image = nucleus_image.get_image_slice_2d(z)
+    image = image.astype(numpy.float32)
+    image = image / nucleus_image.max()
     image **= (1 / 2)  # Makes the image brighter by taking the square root
 
     # Convert to RGB format (but keep grayscale)

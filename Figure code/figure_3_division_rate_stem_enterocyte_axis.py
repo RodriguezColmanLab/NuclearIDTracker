@@ -125,7 +125,7 @@ def main():
     division_rate_h = [(divisions / hours if hours > 0 else 0) for hours, divisions in zip(hours_seen, divisions_seen)]
     division_rate_day = [rate * 24 for rate in division_rate_h]
     colors = [
-        lib_figures.get_mixed_cell_type_color(["STEM", "ENTEROCYTE", "PANETH"], [1 - i / _BIN_COUNT, i / _BIN_COUNT, 0])
+        lib_figures.get_stem_to_ec_color(1 - i / _BIN_COUNT)
         for i in bin_indices]
     ax.bar(bin_indices, division_rate_day, width=1, color=colors)
 

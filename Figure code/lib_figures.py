@@ -101,6 +101,10 @@ def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilitie
              cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
 
 
+def get_stem_to_ec_color(stem_to_ec: float) -> Tuple[float, float, float]:
+    return get_mixed_cell_type_color(["STEM", "ENTEROCYTE", "PANETH"], [stem_to_ec, 1 - stem_to_ec, 0])
+
+
 def _clip(number: float, min_number: float, max_number: float) -> float:
     """Clips a number to a range."""
     if number < min_number:

@@ -11,10 +11,11 @@ from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
 
 import lib_figures
+import lib_data
 
-_DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
-_TIME_INTERVAL_H = 5
-
+_DATA_FILE = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
+_TIME_INTERVAL_H = 15
+_X_LIM = (0.1, 0.7)
 
 class _StemToEnterocyteData:
     """Stores the stemness of cells along the stem-to-enterocyte axis, for multiple time points."""
@@ -38,28 +39,6 @@ class _StemToEnterocyteData:
         return self._bins
 
 
-def _find_stem_to_ec_location(cell_types: List[str], position_data: PositionData, position: Position) -> Optional[float]:
-    """Projects a cell on the stem-to-enterocyte axis. If a cell has no predicted type, or a type other than stem or
-    enterocyte, None is returned."""
-    stemness = 0
-    ct_probabilities = position_data.get_position_data(position, "ct_probabilities")
-    if ct_probabilities is None:
-        return None
-
-    highest_type = cell_types[numpy.argmax(ct_probabilities)]
-    if highest_type not in {"STEM", "ENTEROCYTE"}:
-        return None  # Only consider stem and enterocyte cells
-
-    for i, cell_type in enumerate(cell_types):
-        if cell_type == "STEM":
-            stemness += ct_probabilities[i]
-        elif cell_type == "ENTEROCYTE":
-            continue
-        else:
-            stemness = ct_probabilities[i] / 2  # Divide the remainder between stemness and enterocyteness
-    return stemness
-
-
 def main():
 
     all_probabilities = _StemToEnterocyteData()
@@ -68,23 +47,36 @@ def main():
         _collect_experiment_data(experiment, into=all_probabilities)
 
     figure = lib_figures.new_figure()
-    ax = figure.gca()
-
-    # Add p-values
     times_h = all_probabilities.times_h()
-    for i in range(len(times_h) - 1):
-        values = all_probabilities.values()[i]
-        next_values = all_probabilities.values()[i + 1]
-        t_statistic, p_value = ttest_ind(values, next_values)
+    all_probabilities_values = all_probabilities.values()
 
-        ax.text((times_h[i] + times_h[i + 1]) / 2, 0.5, f"p={p_value:.2f}", fontsize=8, ha="center", va="center")
+    axes = figure.subplots(nrows=len(times_h), ncols=1, sharex=False, sharey=True)
+    for i, ax in enumerate(axes):
+        _, bins, patches = ax.hist(all_probabilities_values[i], bins=numpy.arange(0, 1, 0.02))
+        for j in range(len(bins) - 1):
+            bin_x = (bins[j] + bins[j + 1]) / 2
+            patches[j].set_facecolor(lib_figures.get_stem_to_ec_color(bin_x))
 
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
-    ax.violinplot(all_probabilities.values(), positions=all_probabilities.times_h(), showmeans=False, showmedians=True, showextrema=False, widths=8)
-    ax.set_xlabel("Time (h)")
-    ax.set_ylabel("Stemness")
-    ax.set_title("Stemness of cells along the stem-enterocyte axis")
-    ax.set_xticks(all_probabilities.times_h())
+        if i != len(times_h) - 1:
+            ax.spines["bottom"].set_visible(False)
+            ax.set_xticks([])
+        else:
+            ax.set_xticks(numpy.arange(_X_LIM[0], _X_LIM[1] + 0.1, 0.1))
+            ax.set_xlabel("Stem to enterocyte axis")
+        ax.set_xlim(_X_LIM[1], _X_LIM[0])
+
+        ax.set_yscale("log")
+        ax.set_ylim(8, 700)
+        ax.set_yticks([10, 100])
+        ax.set_yticklabels(["10", "100"])
+
+        # Add time to top left of panel
+        ax.text(1.0, 0.8, f"{times_h[i]}h", transform=ax.transAxes, horizontalalignment="right", verticalalignment="top")
+
+    axes[len(axes) // 2].set_ylabel("Cell count")
     plt.show()
 
 
@@ -105,7 +97,8 @@ def _collect_experiment_data(experiment: Experiment, *, into: _StemToEnterocyteD
         next_time_h += _TIME_INTERVAL_H
         stem_to_ec_locations = list()
         for position in experiment.positions.of_time_point(time_point):
-            stem_to_ec_location = _find_stem_to_ec_location(cell_types, experiment.position_data, position)
+            probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
+            stem_to_ec_location = lib_data.find_stem_to_ec_location(cell_types, probabilities)
             if stem_to_ec_location is not None:
                 stem_to_ec_locations.append(stem_to_ec_location)
 

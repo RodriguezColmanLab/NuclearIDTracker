@@ -17,13 +17,11 @@ from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking import nearby_position_finder
 
-_LIST_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
+_LIST_FILE = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
 _OUTPUT_FILE = "E:/Scratch/Figures/movie_colored_{experiment}.tif"
 
 _NUCLEUS_CHANNEL = ImageChannel(index_zero=0)
 _SEGMENTATION_CHANNEL = ImageChannel(index_zero=2)
-
-_Z = 2
 
 
 def main():
@@ -49,6 +47,7 @@ def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: I
                segmentation_channel: ImageChannel, background_rgba: Tuple[int, int, int, int] = (0, 0, 0, 255)
                ) -> ndarray:
     segmentation_image = experiment.images.get_image(time_point, segmentation_channel)
+    nucleus_image = experiment.images.get_image(time_point, nucleus_channel)
 
     background_image = numpy.zeros((segmentation_image.shape_y, segmentation_image.shape_x, 4), dtype=numpy.uint8)
     for i in range(4):
@@ -60,7 +59,7 @@ def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: I
     slice_buffer_uint8 = numpy.zeros((segmentation_image.shape_y, segmentation_image.shape_x, 4),
                                      dtype=numpy.uint8)  # 2D RGBA
     for z in range(segmentation_image.limit_z - 1, segmentation_image.min_z - 1, -1):
-        image_nuclei = _get_nuclear_image_2d_gray(experiment, time_point, z, nucleus_channel)
+        image_nuclei = _get_nuclear_image_2d_gray(z, nucleus_image)
         image_colored = _get_cell_types_image_rgb(experiment, time_point, z, segmentation_image)
 
         # Place the image in the temporary slice
@@ -87,6 +86,7 @@ def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: I
     color_image = numpy.asarray(color_image_pil, dtype=numpy.float32)
     color_image_pil.close()
     color_image /= 255  # Scale to 0-1
+    color_image = color_image[:, :, 0:3]  # Remove alpha channel
 
     return color_image
 
@@ -175,11 +175,10 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: 
     return colored_image
 
 
-def _get_nuclear_image_2d_gray(experiment: Experiment, time_point: TimePoint, z: int,
-                               nucleus_channel: ImageChannel) -> ndarray:
-    image = experiment.images.get_image_slice_2d(time_point, nucleus_channel, z)
+def _get_nuclear_image_2d_gray(z: int, nucleus_image: Image) -> ndarray:
+    image = nucleus_image.get_image_slice_2d(z)
     image = image.astype(numpy.float32)
-    image = image / image.max()
+    image = image / nucleus_image.max()
     image **= (1 / 2)  # Makes the image brighter by taking the square root
 
     # Convert to RGB format (but keep grayscale)

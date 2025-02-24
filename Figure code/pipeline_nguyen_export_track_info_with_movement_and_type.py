@@ -1,17 +1,19 @@
 # For all the organoids (control and DT remove): per cells: cell ID, cell type, total time recorded,
 # cell speed (total move/time), travel distance abs(late - begin position), distance to the axis (as you calculated)
 import os
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 import numpy
 
+from organoid_tracker.core.beacon_collection import BeaconCollection
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.core.resolution import ImageResolution, ImageTimings
-from organoid_tracker.core.spline import SplineCollection
+from organoid_tracker.core.spline import SplineCollection, SplinePosition
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking import cell_division_finder
+import lib_data
 
 _DATA_FILE_REGENERATION = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
 _DATA_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"
@@ -52,29 +54,44 @@ def _export_organoid_track_info(experiment: Experiment, data_file: str):
     timings = experiment.images.timings()
     resolution = experiment.images.resolution()
     splines = experiment.splines
+    beacons = experiment.beacons
 
     with open(data_file, "w") as handle:
         handle.write(
-            "Cell ID, Cell type, Total hours recorded, Cell speed (um/min), Distance traveled (um), Difference on crypt-villus axis\n")
+            "Cell ID, Cell type, Total hours recorded, Cell speed (um/min), Distance traveled (um), Crypt axis id,"
+            "Crypt-villus axis start (um), Crypt-villus axis end (um), Difference on crypt-villus axis (um),"
+            "Crypt-villus axis start (relative), Crypt-villus axis end (relative), Difference on crypt-villus axis (relative), Stem to EC location\n")
 
         for track in experiment.links.find_all_tracks():
             if not filter_lineages(experiment, track):
                 continue
 
             track_id = experiment.links.get_track_id(track)
-            cell_type = _get_cell_type(cell_types, position_data, track)
+            cell_type_probabilities = _get_cell_type_scores(cell_types, position_data, track)
+            cell_type = None if cell_type_probabilities is None else cell_types[numpy.argmax(cell_type_probabilities)]
+            stem_to_ec_location = lib_data.find_stem_to_ec_location(cell_types, cell_type_probabilities)
             time_start_h = timings.get_time_h_since_start(track.first_time_point())
             time_end_h = timings.get_time_h_since_start(track.last_time_point() + 1)
             total_time_recorded = time_end_h - time_start_h
             cell_speed_um_m = _get_cell_speed_um_m(resolution, timings, track)
             travel_distance_um = track.find_last_position().distance_um(track.find_first_position(), resolution)
-            crypt_axis_um = _get_crypt_axis_change_um(splines, resolution, track)
+            spline_id, crypt_axis_first_um, crypt_axis_last_um = _get_crypt_axis_change_um(splines, resolution, track)
+            crypt_axis_relative_first, crypt_axis_relative_last = _get_crypt_axis_change_relative(splines, beacons, track)
 
             handle.write(
-                f"{track_id}, {cell_type}, {total_time_recorded}, {cell_speed_um_m}, {travel_distance_um}, {crypt_axis_um}\n")
+                f"{track_id}, {cell_type}, {total_time_recorded}, {cell_speed_um_m}, {travel_distance_um}, {spline_id}, "
+                f"{crypt_axis_first_um}, {crypt_axis_last_um}, {_subtract(crypt_axis_last_um, crypt_axis_first_um)}, "
+                f"{crypt_axis_relative_first}, {crypt_axis_relative_last},  {_subtract(crypt_axis_relative_last, crypt_axis_relative_first)}, "
+                f"{stem_to_ec_location}\n")
 
 
-def _get_cell_type(cell_types: List[str], position_data: PositionData, track: LinkingTrack) -> Optional[str]:
+def _subtract(value1: Optional[float], value2: Optional[float]) -> Optional[float]:
+    if value1 is None or value2 is None:
+        return None
+    return value1 - value2
+
+
+def _get_cell_type_scores(cell_types: List[str], position_data: PositionData, track: LinkingTrack) -> Optional[str]:
     overall_probabilities = numpy.zeros(len(cell_types), dtype=float)
     overall_probabilities_count = 0
     for position in track.positions():
@@ -86,7 +103,7 @@ def _get_cell_type(cell_types: List[str], position_data: PositionData, track: Li
 
     if overall_probabilities_count == 0:
         return None
-    return cell_types[numpy.argmax(overall_probabilities)]
+    return overall_probabilities / overall_probabilities_count
 
 
 def _get_cell_speed_um_m(resolution: ImageResolution, timings: ImageTimings, track: LinkingTrack) -> float:
@@ -107,16 +124,42 @@ def _get_cell_speed_um_m(resolution: ImageResolution, timings: ImageTimings, tra
     return total_distance / total_time_m
 
 
-def _get_crypt_axis_change_um(splines: SplineCollection, resolution: ImageResolution, track: LinkingTrack) -> Optional[
-    float]:
+def _get_crypt_axis_change_um(splines: SplineCollection, resolution: ImageResolution, track: LinkingTrack
+                              ) -> Tuple[Optional[int], Optional[float], Optional[float]]:
     axis_position_first = splines.to_position_on_spline(track.find_first_position(), only_axis=True)
     axis_position_last = splines.to_position_on_spline(track.find_last_position(), only_axis=True)
 
-    if axis_position_first is None or axis_position_last is None:
-        return None
+    if (axis_position_first is None or axis_position_last is None
+            or axis_position_first.spline_id != axis_position_last.spline_id):
+        return None, None, None
 
-    axis_position_difference = axis_position_last.pos - axis_position_first.pos
-    return axis_position_difference * resolution.pixel_size_x_um
+    return (axis_position_first.spline_id, axis_position_first.pos * resolution.pixel_size_x_um,
+            axis_position_last.pos * resolution.pixel_size_x_um)
+
+
+def _make_axis_position_relative(beacons: BeaconCollection, spline_position: SplinePosition) -> float:
+    """Makes the axis position relative, such that the position of the closest beacon to the spline is defined as 1.0.
+    """
+    closest_beacon_spline_position = None
+    for beacon in beacons.of_time_point(spline_position.time_point):
+        beacon_spline_position = spline_position.spline.to_position_on_axis(beacon)
+        if closest_beacon_spline_position is None or beacon_spline_position.distance < closest_beacon_spline_position.distance:
+            closest_beacon_spline_position = beacon_spline_position
+    return spline_position.pos / closest_beacon_spline_position.pos
+
+
+def _get_crypt_axis_change_relative(splines: SplineCollection, beacons: BeaconCollection, track: LinkingTrack
+                                    ) -> Tuple[Optional[float], Optional[float]]:
+    axis_position_first = splines.to_position_on_spline(track.find_first_position(), only_axis=True)
+    axis_position_last = splines.to_position_on_spline(track.find_last_position(), only_axis=True)
+
+    if (axis_position_first is None or axis_position_last is None
+            or axis_position_first.spline_id != axis_position_last.spline_id):
+        return None, None
+
+    last_pos = _make_axis_position_relative(beacons, axis_position_last)
+    first_pos = _make_axis_position_relative(beacons, axis_position_first)
+    return first_pos, last_pos
 
 
 def _export_organoid_divisions(experiment: Experiment, output_file: str):
