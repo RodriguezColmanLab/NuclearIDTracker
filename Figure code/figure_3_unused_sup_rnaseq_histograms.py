@@ -34,7 +34,7 @@ def main():
     figure = lib_figures.new_figure(size=(6, 1.7))
     ax_stem, ax_ta, ax_ec = figure.subplots(1, 3)
     for day in sorted(list(set(data["day"]))):
-        _draw_histogram(ax_stem, data, "Stem_score", day)
+        _draw_histogram(ax_stem, data, "Proliferation_score", day)
         _draw_histogram(ax_ta, data, "TA_score", day)
         _draw_histogram(ax_ec, data, "EC_score", day)
     ax_stem.text(0.5, 1, f"p = {stem_p_value:.2}", transform=ax_stem.transAxes, ha="center", va="top")

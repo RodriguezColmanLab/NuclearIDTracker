@@ -4,10 +4,12 @@ from typing import List, Iterable, Optional
 import numpy
 
 from organoid_tracker.core import UserError
+from organoid_tracker.core.beacon_collection import BeaconCollection
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.core.resolution import ImageResolution
+from organoid_tracker.core.spline import SplinePosition
 from organoid_tracker.imaging import list_io
 
 # Using the format of "P:\Rodriguez_Colman\stemcell_cancer_metab\tnguyen\1 - paper work\1 - PAPER1-MET CRC cell ident\Figure 2-final\Organoid-Tracker analysis\raw csv files\02022020pos1 tpo3 control.csv"
@@ -155,6 +157,34 @@ def _get_crypt_axis_change_um(track_sequence: List[LinkingTrack], experiment: Ex
     return (spline_position_end.distance - spline_position_start.distance) * experiment.images.resolution().pixel_size_x_um
 
 
+def _get_relative_crypt_axis_change_um(track_sequence: List[LinkingTrack], experiment: Experiment) -> Optional[float]:
+    spline_position_start = experiment.splines.to_position_on_spline(track_sequence[0].find_first_position(), only_axis=True)
+    spline_position_end = experiment.splines.to_position_on_spline(track_sequence[-1].find_last_position(), only_axis=True)
+    if spline_position_start is None or spline_position_end is None:
+        return None
+    if spline_position_start.spline_id != spline_position_end.spline_id:
+        return None  # Cell moved to another crypt, cannot compare the distance
+
+    start_position_relative = _make_axis_position_relative_to_lumen(experiment.beacons, spline_position_start)
+    end_position_relative = _make_axis_position_relative_to_lumen(experiment.beacons, spline_position_end)
+
+    return end_position_relative - start_position_relative
+
+
+def _make_axis_position_relative_to_lumen(beacons: BeaconCollection, spline_position: SplinePosition) -> float:
+    """Makes the axis position relative, such that the position of the closest beacon defined as "LUMEN" to the spline
+     is defined as 1.0.
+    """
+    closest_beacon_spline_position = None
+    for beacon in beacons.of_time_point_with_type(spline_position.time_point):
+        if beacon.beacon_type != "LUMEN":
+            continue  # Not the annotation of the lumen
+        beacon_spline_position = spline_position.spline.to_position_on_axis(beacon.position)
+        if closest_beacon_spline_position is None or beacon_spline_position.distance < closest_beacon_spline_position.distance:
+            closest_beacon_spline_position = beacon_spline_position
+    return spline_position.pos / closest_beacon_spline_position.pos
+
+
 def _export_tracks(experiment: Experiment, output_file: str, included_starting_tracks: Iterable[LinkingTrack]):
     table = _ExportTable()
     position_data = experiment.position_data
@@ -173,6 +203,8 @@ def _export_tracks(experiment: Experiment, output_file: str, included_starting_t
     table.set_cell(0, 4, "Movement speed (um/h)")
     table.set_cell(0, 5, "Traveled distance (um)")
     table.set_cell(0, 6, "Traveled distance along crypt-villus axis (um)")
+    table.set_cell(0, 7, "Traveled distance along crypt-villus axis (relative to lumen center)")
+
     for i in range(_MAX_TRACKS_IN_SEQUENCE):
         counting_word = str(i + 1) + "th"
         if i == 0:
@@ -181,7 +213,7 @@ def _export_tracks(experiment: Experiment, output_file: str, included_starting_t
             counting_word = "Second"
         elif i == 2:
             counting_word = "Third"
-        table.set_cell(0, 7 + i, counting_word + " track TZYX")
+        table.set_cell(0, 8 + i, counting_word + " track TZYX")
 
     # Write the rows
     row_number = 1
@@ -208,6 +240,7 @@ def _export_tracks(experiment: Experiment, output_file: str, included_starting_t
             table.set_cell(row_number, 4, str(_get_traveled_distance_um(track_sequence, resolution) / (time_end - time_start)))
             table.set_cell(row_number, 5, str(_get_distance_change_um(track_sequence, resolution)))
             table.set_cell(row_number, 6, str(_get_crypt_axis_change_um(track_sequence, experiment)))
+            table.set_cell(row_number, 7, str(_get_relative_crypt_axis_change_um(track_sequence, experiment)))
 
             # Get the tracsk TZYX
             dict_keys = [track.find_first_position().to_dict_key() for track in track_sequence]
@@ -216,7 +249,7 @@ def _export_tracks(experiment: Experiment, output_file: str, included_starting_t
             if len(dict_keys) > _MAX_TRACKS_IN_SEQUENCE:
                 raise ValueError("Too many tracks in sequence")
             for i, dict_key in enumerate(dict_keys):
-                table.set_cell(row_number, 7 + i, dict_key)
+                table.set_cell(row_number, 8 + i, dict_key)
 
             row_number += 1
 

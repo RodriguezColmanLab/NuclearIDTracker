@@ -59,8 +59,10 @@ def _export_organoid_track_info(experiment: Experiment, data_file: str):
     with open(data_file, "w") as handle:
         handle.write(
             "Cell ID, Cell type, Total hours recorded, Cell speed (um/min), Distance traveled (um), Crypt axis id,"
-            "Crypt-villus axis start (um), Crypt-villus axis end (um), Difference on crypt-villus axis (um),"
-            "Crypt-villus axis start (relative), Crypt-villus axis end (relative), Difference on crypt-villus axis (relative), Stem to EC location\n")
+            "Crypt-villus axis start (um), Crypt-villus axis end (um), Difference on crypt-villus axis (um), "
+            "Crypt-villus axis start (relative to neck), Crypt-villus axis end (relative to neck), Difference on crypt-villus axis (relative to neck), "
+            "Crypt-villus axis start (relative to lumen center), Crypt-villus axis end (relative to lumen center), Difference on crypt-villus axis (relative to lumen center), "
+            "Stem to EC location\n")
 
         for track in experiment.links.find_all_tracks():
             if not filter_lineages(experiment, track):
@@ -76,12 +78,14 @@ def _export_organoid_track_info(experiment: Experiment, data_file: str):
             cell_speed_um_m = _get_cell_speed_um_m(resolution, timings, track)
             travel_distance_um = track.find_last_position().distance_um(track.find_first_position(), resolution)
             spline_id, crypt_axis_first_um, crypt_axis_last_um = _get_crypt_axis_change_um(splines, resolution, track)
-            crypt_axis_relative_first, crypt_axis_relative_last = _get_crypt_axis_change_relative(splines, beacons, track)
+            crypt_axis_relative_to_neck_first, crypt_axis_relative_to_neck_last = _get_crypt_axis_change_relative_to_neck(splines, beacons, track)
+            crypt_axis_relative_to_lumen_first, crypt_axis_relative_to_lumen_last = _get_crypt_axis_change_relative_to_lumen(splines, beacons, track)
 
             handle.write(
                 f"{track_id}, {cell_type}, {total_time_recorded}, {cell_speed_um_m}, {travel_distance_um}, {spline_id}, "
                 f"{crypt_axis_first_um}, {crypt_axis_last_um}, {_subtract(crypt_axis_last_um, crypt_axis_first_um)}, "
-                f"{crypt_axis_relative_first}, {crypt_axis_relative_last},  {_subtract(crypt_axis_relative_last, crypt_axis_relative_first)}, "
+                f"{crypt_axis_relative_to_neck_first}, {crypt_axis_relative_to_neck_last},  {_subtract(crypt_axis_relative_to_neck_last, crypt_axis_relative_to_neck_first)}, "
+                f"{crypt_axis_relative_to_lumen_first}, {crypt_axis_relative_to_lumen_last},  {_subtract(crypt_axis_relative_to_lumen_last, crypt_axis_relative_to_lumen_first)}, "
                 f"{stem_to_ec_location}\n")
 
 
@@ -137,19 +141,35 @@ def _get_crypt_axis_change_um(splines: SplineCollection, resolution: ImageResolu
             axis_position_last.pos * resolution.pixel_size_x_um)
 
 
-def _make_axis_position_relative(beacons: BeaconCollection, spline_position: SplinePosition) -> float:
-    """Makes the axis position relative, such that the position of the closest beacon to the spline is defined as 1.0.
-    """
+def _make_axis_position_relative_to_neck(beacons: BeaconCollection, spline_position: SplinePosition) -> float:
+    """Makes the axis position relative, such that the position of the closest beacon to the spline without a defined
+     type  is defined as 1.0."""
     closest_beacon_spline_position = None
-    for beacon in beacons.of_time_point(spline_position.time_point):
-        beacon_spline_position = spline_position.spline.to_position_on_axis(beacon)
+    for beacon in beacons.of_time_point_with_type(spline_position.time_point):
+        if beacon.beacon_type is not None:
+            continue  # Some specialized beacon, ignore
+        beacon_spline_position = spline_position.spline.to_position_on_axis(beacon.position)
         if closest_beacon_spline_position is None or beacon_spline_position.distance < closest_beacon_spline_position.distance:
             closest_beacon_spline_position = beacon_spline_position
     return spline_position.pos / closest_beacon_spline_position.pos
 
 
-def _get_crypt_axis_change_relative(splines: SplineCollection, beacons: BeaconCollection, track: LinkingTrack
-                                    ) -> Tuple[Optional[float], Optional[float]]:
+def _make_axis_position_relative_to_lumen(beacons: BeaconCollection, spline_position: SplinePosition) -> float:
+    """Makes the axis position relative, such that the position of the closest beacon defined as "LUMEN" to the spline
+     is defined as 1.0.
+    """
+    closest_beacon_spline_position = None
+    for beacon in beacons.of_time_point_with_type(spline_position.time_point):
+        if beacon.beacon_type != "LUMEN":
+            continue  # Not the annotation of the lumen
+        beacon_spline_position = spline_position.spline.to_position_on_axis(beacon.position)
+        if closest_beacon_spline_position is None or beacon_spline_position.distance < closest_beacon_spline_position.distance:
+            closest_beacon_spline_position = beacon_spline_position
+    return spline_position.pos / closest_beacon_spline_position.pos
+
+
+def _get_crypt_axis_change_relative_to_neck(splines: SplineCollection, beacons: BeaconCollection, track: LinkingTrack
+                                            ) -> Tuple[Optional[float], Optional[float]]:
     axis_position_first = splines.to_position_on_spline(track.find_first_position(), only_axis=True)
     axis_position_last = splines.to_position_on_spline(track.find_last_position(), only_axis=True)
 
@@ -157,8 +177,22 @@ def _get_crypt_axis_change_relative(splines: SplineCollection, beacons: BeaconCo
             or axis_position_first.spline_id != axis_position_last.spline_id):
         return None, None
 
-    last_pos = _make_axis_position_relative(beacons, axis_position_last)
-    first_pos = _make_axis_position_relative(beacons, axis_position_first)
+    last_pos = _make_axis_position_relative_to_neck(beacons, axis_position_last)
+    first_pos = _make_axis_position_relative_to_neck(beacons, axis_position_first)
+    return first_pos, last_pos
+
+
+def _get_crypt_axis_change_relative_to_lumen(splines: SplineCollection, beacons: BeaconCollection, track: LinkingTrack
+                                            ) -> Tuple[Optional[float], Optional[float]]:
+    axis_position_first = splines.to_position_on_spline(track.find_first_position(), only_axis=True)
+    axis_position_last = splines.to_position_on_spline(track.find_last_position(), only_axis=True)
+
+    if (axis_position_first is None or axis_position_last is None
+            or axis_position_first.spline_id != axis_position_last.spline_id):
+        return None, None
+
+    last_pos = _make_axis_position_relative_to_lumen(beacons, axis_position_last)
+    first_pos = _make_axis_position_relative_to_lumen(beacons, axis_position_first)
     return first_pos, last_pos
 
 

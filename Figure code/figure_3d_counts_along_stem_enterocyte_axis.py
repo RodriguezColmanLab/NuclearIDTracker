@@ -1,20 +1,15 @@
-from typing import List, Optional, Iterable
+from typing import List
 
-import matplotlib
 import numpy
 from matplotlib import pyplot as plt
-from scipy.stats import ttest_ind
 
+import lib_data
+import lib_figures
 from organoid_tracker.core.experiment import Experiment
-from organoid_tracker.core.position import Position
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
 
-import lib_figures
-import lib_data
-
 _DATA_FILE = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
-_TIME_INTERVAL_H = 15
+_TIME_INTERVAL_H = 10
 _X_LIM = (0.1, 0.7)
 
 class _StemToEnterocyteData:

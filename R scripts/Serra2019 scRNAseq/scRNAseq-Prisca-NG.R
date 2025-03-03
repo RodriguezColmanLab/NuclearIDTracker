@@ -180,10 +180,7 @@ export_dt_all <- data.frame(cell_ID = colnames(prot.seurat),
                             TA_score = prot.seurat@meta.data$TA_Scores,
                             Stem_score = prot.seurat@meta.data$Stemness_Scores,
                             EC_score = prot.seurat@meta.data$EC_Scores,
-                            Lgr5 = counts["Lgr5",],
-                            Olfm4 = counts["Olfm4",],
-                            Ascl2 = counts["Ascl2",],
-                            Axin2 = counts["Axin2",]
+                            Proliferation_score = prot.seurat@meta.data$Proliferation_Scores
                             )
 
 sum(!is.na(export_dt_all$cell_type))

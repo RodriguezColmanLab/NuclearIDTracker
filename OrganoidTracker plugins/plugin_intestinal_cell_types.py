@@ -1,6 +1,7 @@
 """Registers the Stem and Paneth cell type."""
 from typing import Optional, Any, Dict, List
 
+from organoid_tracker.core.beacon_collection import Beacon
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.marker import Marker
@@ -42,7 +43,7 @@ WGA_PLUS = Marker([Position], "WGA_PLUS", "WGA+ (Paneth/goblet)", (181, 72, 0))
 UNLABELED = Marker([Position], "UNLABELED", "unlabeled", (150, 150, 150))
 
 # Markers that mark something else
-LUMEN = Marker([Position], "LUMEN", "lumen", (200, 200, 200))
+LUMEN = Marker([Beacon], "LUMEN", "lumen", (255, 20, 20))
 CRYPT = Marker([Spline], "CRYPT", "crypt axis", (255, 0, 0), is_axis=True)
 
 
