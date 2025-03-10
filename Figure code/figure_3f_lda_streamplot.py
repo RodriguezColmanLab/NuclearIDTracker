@@ -20,8 +20,7 @@ from organoid_tracker.imaging import list_io
 
 LDA_FILE = "../../Data/all_data.h5ad"
 
-_DATA_FILE = "../../Data/Predicted data.autlist"
-_EXPERIMENT_NAME = "x20190926pos01"
+_DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 # x20190926pos01 (first one we tried), x20190817pos01, x20200614pos10
 
 class _Trajectory(NamedTuple):
@@ -61,7 +60,7 @@ class _Streamplot:
 
     def __init__(self):
         self._half_width = 5
-        self._count = 30
+        self._count = 25
         self._x_coords, self._y_coords = numpy.meshgrid(
             numpy.linspace(-self._half_width, self._half_width, self._count),
             numpy.linspace(-self._half_width, self._half_width, self._count))
@@ -100,7 +99,7 @@ class _Streamplot:
         dy_values *= factor
 
         lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=1.5, color="white",
-                                  linewidth=3, maxlength=0.12, integration_direction="forward")
+                                  linewidth=2, maxlength=0.12, integration_direction="forward")
         lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=1.5, color="black",
                                   linewidth=1, maxlength=0.12, integration_direction="forward")
 
@@ -155,9 +154,8 @@ def main():
 
     streamplot = _Streamplot()
     for experiment in experiments:
-        if experiment.name.get_name() == _EXPERIMENT_NAME:
-            _extract_trajectories(experiment, adata, lda, streamplot)
-            break
+        _extract_trajectories(experiment, adata, lda, streamplot)
+        break
 
     # Plot the LDA
     figure = lib_figures.new_figure(size=(3.5, 2.5))

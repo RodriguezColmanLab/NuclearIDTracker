@@ -12,9 +12,6 @@ from organoid_tracker.core.resolution import ImageResolution
 from organoid_tracker.core.spline import SplinePosition
 from organoid_tracker.imaging import list_io
 
-# Using the format of "P:\Rodriguez_Colman\stemcell_cancer_metab\tnguyen\1 - paper work\1 - PAPER1-MET CRC cell ident\Figure 2-final\Organoid-Tracker analysis\raw csv files\02022020pos1 tpo3 control.csv"
-# Difference with version 1 is that the final cell type is now included in the CSV file, and that it no longer cuts
-# off tracking data by itself. (All tracking data is assumed to be cut to 25h already.)
 
 _DATA_FILE_REGENERATION = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
 _DATA_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"

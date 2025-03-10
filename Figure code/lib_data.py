@@ -97,5 +97,5 @@ def find_stem_to_ec_location(cell_types: List[str], ct_probabilities: Optional[L
         elif cell_type == "ENTEROCYTE":
             continue
         else:
-            stemness = ct_probabilities[i] / 2  # Divide the remainder between stemness and enterocyteness
+            stemness += ct_probabilities[i] / 2  # Divide the remainder between stemness and enterocyteness
     return stemness
