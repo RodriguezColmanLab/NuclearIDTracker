@@ -125,11 +125,12 @@ def main():
                     binned_data.add_position(crypt_axis_position, ct_probabilities)
 
             data_by_crypt.append(binned_data)
+    data_by_crypt.reverse()
 
     # Plot the data
-    figure = lib_figures.new_figure(size=(4.5, 5.5))
+    figure = lib_figures.new_figure(size=(4.5, 3.5))
 
-    ax_main, ax_average, ax_paneth = figure.subplots(nrows=3, ncols=1, height_ratios=[20, 1, 1], sharex=True, sharey=False)
+    ax_main, ax_average, ax_paneth = figure.subplots(nrows=3, ncols=1, height_ratios=[15, 1, 1], sharex=True, sharey=False)
 
     generator = numpy.random.Generator(numpy.random.MT19937(seed=1))
     average_probability = _AverageProbabilities(data_by_crypt[0].cell_types, _MAX_AXIS_POSITION_IN_AVERAGE)
@@ -168,13 +169,12 @@ def main():
 
 
 def _draw_paneths(ax: Axes, data_by_crypt: Iterable[_CellsInCrypt]):
-    paneth_color = lib_figures.get_mixed_cell_type_color(["PANETH", "STEM", "ENTEROCYTE"], [1, 0, 0])
     x_positions = list()
     for crypt in data_by_crypt:
         x_positions += list(crypt.paneth_positions())
     random = numpy.random.Generator(numpy.random.MT19937(seed=2))
     ax.scatter(x_positions, random.normal(loc=0.5, scale=0.15, size=len(x_positions)),
-               s=5, c=[paneth_color], linewidth=0, marker="D")
+               s=5, c="black", linewidth=0, marker="D")
 
 
 def _make_axis_position_relative_to_neck(beacons: BeaconCollection, spline_position: SplinePosition) -> float:

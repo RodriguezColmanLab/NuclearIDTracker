@@ -92,7 +92,8 @@ def _print_cell_type_fraction(organoid_number: int, cell_count: _CellCountsOverT
     cell_fraction_start = cell_count.counts_per_cell_type[cell_type][0] / cell_count.total_cell_counts()[0] * 100
     cell_fraction_end = cell_count.counts_per_cell_type[cell_type][-1] / cell_count.total_cell_counts()[-1] * 100
     print(f"Organoid {organoid_number}: Fraction of {cell_type} cells at start: {cell_fraction_start:.1f}%, at end: {cell_fraction_end:.1f}%")
-
+    print("Paneth cells:", cell_count.counts_per_cell_type["PANETH"])
+    print("All cells:", list(cell_count.total_cell_counts()))
 
 def main():
     cell_counts = []

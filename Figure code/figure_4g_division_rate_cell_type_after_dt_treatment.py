@@ -135,7 +135,7 @@ def main():
 
     # Add number of divisions to the bars
     for i, rate in enumerate(division_rate_day):
-        ax.text(x_positions_bars[i], rate, str(int(hours_seen[i])) + "h", ha="center", va="bottom")
+        ax.text(x_positions_bars[i], rate, str(int(divisions_seen[i])), ha="center", va="bottom")
 
     # Add spread of division rates for the control experiment
     random_generator = numpy.random.Generator(numpy.random.MT19937(seed=1))

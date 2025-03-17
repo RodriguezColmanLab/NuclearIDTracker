@@ -14,7 +14,6 @@ _DATA_FILE = "../../Data/Immunostaining conditions.autlist"
 
 class _Condition(Enum):
     CONTROL = auto()
-    DAPT_CHIR = auto()
     NO_RSPONDIN = auto()
 
     @property
@@ -71,8 +70,6 @@ def _get_condition(experiment: Experiment) -> _Condition:
 
     if "control" in name:
         return _Condition.CONTROL
-    if "dapt chir" in name:
-        return _Condition.DAPT_CHIR
     if "EN" in name:
         return _Condition.NO_RSPONDIN
     raise ValueError("Unknown condition: " + name)
@@ -97,6 +94,8 @@ def main():
             continue  # Skip these experiments
         if "chir vpa" in experiment.name.get_name():
             continue  # Also skipped, as KRT20 signal was everywhere, which indicates the experiment failed
+        if "dapt chir" in experiment.name.get_name():
+            continue  # In this panel, we only plot control and No Rspondin
         condition = _get_condition(experiment)
         print(experiment.name, condition)
         for position in experiment.positions:

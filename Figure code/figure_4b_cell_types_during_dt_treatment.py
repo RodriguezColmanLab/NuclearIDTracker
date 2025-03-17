@@ -44,7 +44,6 @@ class _CellCountsOverTime:
         return result
 
 
-
 def _get_cell_counts_over_time(experiment: Experiment) -> _CellCountsOverTime:
     timings = experiment.images.timings()
     cell_counts = _CellCountsOverTime(experiment.name)

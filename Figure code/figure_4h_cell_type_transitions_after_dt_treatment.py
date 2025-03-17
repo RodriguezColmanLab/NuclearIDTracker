@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 from matplotlib.axes._axes import Axes
 from matplotlib.patches import Arc
 
-import figure_4_sup_cell_type_transition_matrix as cell_type_transition_panel
+import figure_3_sup_cell_type_transition_matrix as cell_type_transition_panel
 import lib_figures
 
 _AVERAGING_WINDOW_WIDTH_H = 5
