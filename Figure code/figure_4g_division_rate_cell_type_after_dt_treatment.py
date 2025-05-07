@@ -11,6 +11,7 @@ from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
+import lib_data
 
 _AVERAGING_WINDOW_WIDTH_H = 5
 _DATASET_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"
@@ -186,8 +187,36 @@ def _extract_division_rates(experiment: Experiment) -> _DivisionRates:
 
         data_for_cell_type.hours_seen += track_duration_h
         if track.will_divide():
+            if cell_type == "PANETH":
+                stem_to_paneth_location = _find_stem_to_paneth_location(experiment, track)
+                print(f"Found a Paneth cell that will divide in {experiment.name.get_name()}, location {stem_to_paneth_location}")
             data_for_cell_type.divisions_seen += 1
     return experiment_data
+
+
+def _find_stem_to_paneth_location(experiment: Experiment, track: LinkingTrack) -> Optional[float]:
+    """Finds the point the cell lies on the stem-to-enterocyte axis. If a cell has no predicted type, or a type
+    other than stem or enterocyte, None is returned."""
+    defined_cell_types = experiment.global_data.get_data("ct_probabilities")
+    if defined_cell_types is None:
+        raise ValueError("No cell type probabilities found in experiment data")
+
+    position_data = experiment.position_data
+    overall_probabilities = numpy.zeros(len(defined_cell_types), dtype=float)
+    included_position_count = 0
+
+    for position in track.positions():
+        probabilities = position_data.get_position_data(position, "ct_probabilities")
+        if probabilities is None:
+            continue
+        overall_probabilities += probabilities
+        included_position_count += 1
+
+    if included_position_count == 0:
+        return None
+    overall_probabilities /= included_position_count  # Convert to average probabilities
+
+    return lib_data.find_stem_to_paneth_location(defined_cell_types, overall_probabilities)
 
 
 if __name__ == "__main__":

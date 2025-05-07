@@ -88,21 +88,26 @@ def style_cell_type_name(cell_type_name: str) -> str:
             .replace("paneth", "Paneth").replace("stem fetal", "fetal stem"))
 
 
-def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> Tuple[float, float, float]:
+def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> Tuple[
+    float, float, float]:
     max_probability = max(cell_type_probabilities)
     min_plotted_probability = max_probability * 0.5
 
     cell_type_probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability)
-                     for probability in cell_type_probabilities]
+                               for probability in cell_type_probabilities]
 
     cell_type_probabilities = [_clip(probability, 0, 1) for probability in cell_type_probabilities]
     return (cell_type_probabilities[cell_type_names.index("PANETH")],
-             cell_type_probabilities[cell_type_names.index("STEM")],
-             cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
+            cell_type_probabilities[cell_type_names.index("STEM")],
+            cell_type_probabilities[cell_type_names.index("ENTEROCYTE")])
 
 
 def get_stem_to_ec_color(stem_to_ec: float) -> Tuple[float, float, float]:
     return get_mixed_cell_type_color(["STEM", "ENTEROCYTE", "PANETH"], [stem_to_ec, 1 - stem_to_ec, 0])
+
+
+def get_stem_to_paneth_color(stem_to_paneth: float) -> Tuple[float, float, float]:
+    return get_mixed_cell_type_color(["STEM", "ENTEROCYTE", "PANETH"], [stem_to_paneth, 0, 1 - stem_to_paneth])
 
 
 def _clip(number: float, min_number: float, max_number: float) -> float:
@@ -112,4 +117,3 @@ def _clip(number: float, min_number: float, max_number: float) -> float:
     if number > max_number:
         return max_number
     return number
-

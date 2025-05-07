@@ -9,8 +9,9 @@ from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.imaging import list_io
 
 _DATA_FILE = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
-_TIME_INTERVAL_H = 10
+_TIME_INTERVAL_H = 15
 _X_LIM = (0.1, 0.7)
+
 
 class _StemToEnterocyteData:
     """Stores the stemness of cells along the stem-to-enterocyte axis, for multiple time points."""
@@ -35,7 +36,6 @@ class _StemToEnterocyteData:
 
 
 def main():
-
     all_probabilities = _StemToEnterocyteData()
 
     for experiment in list_io.load_experiment_list_file(_DATA_FILE, load_images=False):
@@ -69,11 +69,11 @@ def main():
         ax.set_yticklabels(["10", "100"])
 
         # Add time to top left of panel
-        ax.text(1.0, 0.8, f"{times_h[i]}h", transform=ax.transAxes, horizontalalignment="right", verticalalignment="top")
+        ax.text(1.0, 0.8, f"{times_h[i]}h", transform=ax.transAxes, horizontalalignment="right",
+                verticalalignment="top")
 
     axes[len(axes) // 2].set_ylabel("Cell count")
     plt.show()
-
 
 
 def _collect_experiment_data(experiment: Experiment, *, into: _StemToEnterocyteData):

@@ -25,7 +25,7 @@ class _ParsedConfig(NamedTuple):
 
 def _predict_organoid(experiment: Experiment, model: lib_models.OurModel):
     # Delete existing cell types
-    experiment.position_data.delete_data_with_name("type")
+    # experiment.position_data.delete_data_with_name("type")
 
     # Get input parameter names
     input_names = model.get_input_output().input_mapping
@@ -54,7 +54,7 @@ def _predict_organoid(experiment: Experiment, model: lib_models.OurModel):
         experiment.position_data.set_position_data(position, "ct_probabilities",
                                                    [float(prob) for prob in probability_by_cell_type])
         cell_type = cell_types[numpy.argmax(probability_by_cell_type)]
-        position_markers.set_position_type(experiment.position_data, position, cell_type)
+        #position_markers.set_position_type(experiment.position_data, position, cell_type)
 
 
 def _parse_config(config: ConfigFile) -> _ParsedConfig:
@@ -132,6 +132,11 @@ def run_predictions():
     for i, experiment in enumerate(list_io.load_experiment_list_file(parsed_config.tracking_input_file)):
         print(f"Working on {experiment.name}...")
         _predict_organoid(experiment, model)
+        save_name = experiment.last_save_file
+        # Get file name part of save_name
+        if save_name is not None:
+            save_name = os.path.basename(save_name)
+        else:
+            save_name = str(i + 1) + ". " + experiment.name.get_save_name() + "." + io.FILE_EXTENSION
         io.save_data_to_json(experiment,
-                             os.path.join(parsed_config.output_folder,
-                                          f"{i + 1}. {experiment.name.get_save_name()}.{io.FILE_EXTENSION}"))
+                             os.path.join(parsed_config.output_folder, save_name))

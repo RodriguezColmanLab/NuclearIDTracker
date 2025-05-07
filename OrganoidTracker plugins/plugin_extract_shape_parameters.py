@@ -237,9 +237,9 @@ def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, 
         time_point_results.store(positions_by_label, results)
 
     # Average all values
-    print("Averaging values over time...")
-    for track in experiment.links.find_all_tracks():
-        _average_track(experiment, track, results)
+    # print("Averaging values over time...")
+    # for track in experiment.links.find_all_tracks():
+    #     _average_track(experiment, track, results)
 
     return results
 

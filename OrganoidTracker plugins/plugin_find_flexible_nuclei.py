@@ -69,7 +69,6 @@ class _NucleusFlexibilityAnalyzer(ExitableImageVisualizer):
 
         if len(major_axis_lengths) < _MEASUREMENT_TIME_POINTS * 0.9:
             return None
-        print(len(major_axis_lengths))
 
         major_axis_flexibility = _calculate_flexibility(major_axis_lengths)
         minor_axis_flexibility = _calculate_flexibility(minor_axis_lengths)
@@ -99,7 +98,8 @@ class _NucleusFlexibilityAnalyzer(ExitableImageVisualizer):
     def get_extra_menu_options(self) -> Dict[str, Any]:
         return {
             **super().get_extra_menu_options(),
-            "Graph//Lines-Plot axis lengths": lambda: self._plot_axis_lengths(),
+            "Graph//Lines-Plot axis lengths": self._plot_axis_lengths,
+            "Graph//Lines-Plot all parameters": self._plot_all_parameters
         }
 
     def _plot_axis_lengths(self):
@@ -157,3 +157,82 @@ class _NucleusFlexibilityAnalyzer(ExitableImageVisualizer):
                 ax.axvline(division_time_point, color='gray', linestyle='--')
 
         dialog.popup_figure(self._window, draw_function)
+
+    def _plot_all_parameters(self):
+        if self._selected_position is None:
+            self.update_status('No position selected.')
+            return
+        track = self._experiment.links.get_track(self._selected_position)
+        if track is None:
+            self.update_status('Selected position is not part of a track. Please select a different position.')
+            return
+
+        # Collect parameter names
+        position_data = self._experiment.position_data
+        parameter_names = list()
+        for parameter_name, parameter_type in position_data.get_data_names_and_types().items():
+            if parameter_name.endswith('_local') or "penalty" in parameter_name or "probability" in parameter_name or "error" in parameter_name:
+                # Ignore OrganoidTracker internal parameters and local parameters
+                continue
+            if parameter_name == "organoid_relative_z_um":
+                # Ignore z position - not used in this analysis
+                continue
+            if issubclass(parameter_type, float):
+                parameter_names.append(parameter_name)
+
+        # Collect parameter values
+        time_point_numbers = list()
+        all_parameter_values = list()
+        division_time_points = list()
+        while True:
+            # Collect data for current track
+            for position in reversed(list(track.positions())):
+                parameter_values = [None] * len(parameter_names)
+                for i, parameter_name in enumerate(parameter_names):
+                    parameter_values[i] = position_data.get_position_data(position, parameter_name)
+                if None not in parameter_values:
+                    time_point_numbers.append(position.time_point_number())
+                    all_parameter_values.append(parameter_values)
+                else:
+                    print(parameter_names, parameter_values)
+
+            # Switch to previous track
+            previous_tracks = track.get_previous_tracks()
+            if len(previous_tracks) > 0:
+                division_time_points.append(track.first_time_point_number())
+                track = previous_tracks.pop()
+            else:
+                break
+
+        if len(time_point_numbers) == 0:
+            self.update_status('No data for selected parameter in this track.')
+            return
+
+        def draw_function(figure: Figure):
+
+            axes = figure.subplots(nrows=len(parameter_names), ncols=2, sharex=True, squeeze=False)
+            for i, parameter_name in enumerate(parameter_names):
+                ax_left, ax_right = axes[i]
+                parameter_values = [values[i] for values in all_parameter_values]
+                ax_left.plot(time_point_numbers, parameter_values, linewidth=2)
+                ax_left.set_ylim(0, max(parameter_values) * 1.1)
+                ax_left.set_xlim(self._experiment.first_time_point_number(), self._experiment.last_time_point_number())
+                ax_left.set_ylabel(parameter_name, rotation="horizontal", ha='right')
+
+                parameter_delta_values = numpy.diff(parameter_values)
+                ax_right.plot(time_point_numbers[1:], parameter_delta_values, linewidth=1, color="black")
+                quantile_cutoff = max(abs(numpy.quantile(parameter_delta_values, 0.99)), abs(numpy.quantile(parameter_delta_values, 0.01)))
+                ax_right.set_ylim(-quantile_cutoff * 5, quantile_cutoff * 5)
+
+                for division_time_point in division_time_points:
+                    ax_left.axvline(division_time_point, color='gray', linestyle='--')
+                    ax_right.axvline(division_time_point, color='gray', linestyle='--')
+
+
+            axes[-1][0].set_xlim(self._experiment.first_time_point_number(), self._experiment.last_time_point_number())
+            axes[-1][0].set_xlabel('Time point')
+
+            figure.tight_layout()
+            figure.subplots_adjust(hspace=0)
+
+        dialog.popup_figure(self._window, draw_function, size_cm = (25, 25))

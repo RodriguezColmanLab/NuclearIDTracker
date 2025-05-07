@@ -99,3 +99,24 @@ def find_stem_to_ec_location(cell_types: List[str], ct_probabilities: Optional[L
         else:
             stemness += ct_probabilities[i] / 2  # Divide the remainder between stemness and enterocyteness
     return stemness
+
+
+def find_stem_to_paneth_location(cell_types: List[str], ct_probabilities: Optional[List[float]]) -> Optional[float]:
+    """Projects a cell on the stem-to-Paneth axis. If a cell has no predicted type, or a type other than stem or
+    enterocyte, None is returned."""
+    stemness = 0
+    if ct_probabilities is None:
+        return None
+
+    highest_type = cell_types[numpy.argmax(ct_probabilities)]
+    if highest_type not in {"STEM", "PANETH"}:
+        return None  # Only consider stem and enterocyte cells
+
+    for i, cell_type in enumerate(cell_types):
+        if cell_type == "STEM":
+            stemness += ct_probabilities[i]
+        elif cell_type == "PANETH":
+            continue
+        else:
+            stemness += ct_probabilities[i] / 2  # Divide the remainder between stemness and enterocyteness
+    return stemness
