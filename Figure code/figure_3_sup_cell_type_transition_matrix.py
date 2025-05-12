@@ -79,13 +79,13 @@ class CellTypeTransitionMatrix:
         """Gets the amount of transitions from one cell type to another."""
         bin_start_1 = 2 + int(from_cell_count.stem_to_ec_start * STEM_TO_ENTEROCYTE_BINS)
         bin_start_2 = 2 + int(from_cell_count.stem_to_ec_end * STEM_TO_ENTEROCYTE_BINS)
-        bins_start = list(range(bin_start_1, bin_start_2 + 1))
+        bins_start = list(range(bin_start_1, bin_start_2))
         if from_cell_count.includes_paneth:
             bins_start.append(0)
 
         bin_end_1 = 2 + int(to_cell_type.stem_to_ec_start * STEM_TO_ENTEROCYTE_BINS)
         bin_end_2 = 2 + int(to_cell_type.stem_to_ec_end * STEM_TO_ENTEROCYTE_BINS)
-        bins_end = list(range(bin_end_1, bin_end_2 + 1))
+        bins_end = list(range(bin_end_1, bin_end_2))
         if to_cell_type.includes_paneth:
             bins_end.append(0)
 
