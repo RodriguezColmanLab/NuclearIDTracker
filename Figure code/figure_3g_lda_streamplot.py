@@ -24,8 +24,7 @@ LDA_FILE = "../../Data/all_data.h5ad"
 _MODEL_FOLDER = r"../../Data/Models/epochs-1-neurons-0"
 
 _DATA_FILE_CONTROL = "../../Data/Tracking data as controls/Dataset.autlist"
-_DATA_FILE_REGENERATION = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
-# x20190926pos01 (first one we tried), x20190817pos01, x20200614pos10
+
 
 class _Trajectory(NamedTuple):
     x_values: ndarray
@@ -98,17 +97,9 @@ class _Streamplot:
         dx_values[self._counts < 2] = 0
         dy_values[self._counts < 2] = 0
 
-        # speed = np.sqrt(dx_values ** 2 + dy_values ** 2)
-        #
-        # # Cap speed by a maximum value
-        # max_speed = 0.1
-        # factor = numpy.where(speed > max_speed, max_speed / (speed + 0.00001), numpy.ones_like(speed))
-        # dx_values *= factor
-        # dy_values *= factor
-
-        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=1.5, color="white",
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=0.9, color="white",
                                   linewidth=4, maxlength=0.2, integration_direction="forward")
-        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=1.5, color="black",
+        lib_streamplot.streamplot(ax, self._x_coords, self._y_coords, dx_values, dy_values, density=0.9, color="black",
                                   linewidth=1, maxlength=0.2, integration_direction="forward")
 
 
@@ -158,22 +149,15 @@ def main():
     adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
     # Set up the figures
-    figure = lib_figures.new_figure(size=(8.5, 4.5))
-    ax_control, ax_regeneration = figure.subplots(nrows=1, ncols=2, sharex=True, sharey=True)
+    figure = lib_figures.new_figure(size=(5, 4.5))
+    ax_control = figure.gca()
     ax_control.set_ylim(-5, 5)
     ax_control.set_xlim(-5, 5)
     ax_control.set_title("De-novo growth")
-    ax_regeneration.set_title("Regeneration")
 
     plot_coords_control = _plot_experiments(adata, ax_control, list(list_io.load_experiment_list_file(_DATA_FILE_CONTROL, load_images=False)))
-    plot_coords_regen = _plot_experiments(adata, ax_regeneration, list(list_io.load_experiment_list_file(_DATA_FILE_REGENERATION, load_images=False)))
-
-    # Add coords to the other plot too, for reference, as grayed out points
-    ax_control.scatter(plot_coords_regen[:, 0], plot_coords_regen[:, 1], s=3, lw=0, c="#e5e5e5", zorder=-1)
-    ax_regeneration.scatter(plot_coords_control[:, 0], plot_coords_control[:, 1], s=3, lw=0, c="#e5e5e5", zorder=-1)
 
     ax_control.set_aspect(1)
-    ax_regeneration.set_aspect(1)
     plt.show()
 
 

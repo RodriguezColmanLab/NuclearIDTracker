@@ -15,7 +15,7 @@ from organoid_tracker.util.moving_average import MovingAverage
 _DATA_FILE_ABLATION = "../../Data/Stem cell regeneration/Dataset - during DT treatment.autlist"
 _DATA_FILE_REGENERATION = "../../Data/Stem cell regeneration/Dataset - post DT removal.autlist"
 _REGENERATION_OFFSET_H = 16
-_COLORS = ["#916155", "#DA9180", "#F5B4A5"]
+_COLORS = ["#916155", "#DA9180", "#F5B4A5"]  # From dark to light
 
 
 class _PanethCellCount:

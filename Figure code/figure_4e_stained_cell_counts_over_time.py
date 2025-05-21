@@ -212,14 +212,21 @@ def _plot_counts(figure: Figure, results_stained: Dict[_ExperimentCondition, Lis
 
     # Add average lines
     x_values = [condition.time_h() for condition in _ExperimentCondition]
-    y_values_ki67 = [numpy.mean([result.ki67_positive_count for result in results_stained[condition]]) for condition in _ExperimentCondition]
-    y_values_wga = [numpy.mean([result.wga_positive_count for result in results_stained[condition]]) for condition in _ExperimentCondition]
-    y_values_krt20 = [numpy.mean([result.krt20_positive_count for result in results_stained[condition]]) for condition in _ExperimentCondition]
+    y_values_ki67 = [numpy.mean([result.ki67_positive_count for result in results_stained[condition]]) for condition in
+                     _ExperimentCondition]
+    y_values_wga = [numpy.mean([result.wga_positive_count for result in results_stained[condition]]) for condition in
+                    _ExperimentCondition]
+    y_values_krt20 = [numpy.mean([result.krt20_positive_count for result in results_stained[condition]]) for condition
+                      in _ExperimentCondition]
     y_values_lgr5 = [numpy.mean(results_lgr5[condition]) for condition in _ExperimentCondition]
-    ax_ki67.plot(x_values, y_values_ki67, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["STEM"]), linewidth=1.5, zorder=-10)
-    ax_wga.plot(x_values, y_values_wga, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["PANETH"]), linewidth=1.5, zorder=-10)
-    ax_krt20.plot(x_values, y_values_krt20, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"]), linewidth=1.5, zorder=-10)
-    ax_lgr5.plot(x_values, y_values_lgr5, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["STEM"]), linewidth=1.5, zorder=-10)
+    ax_ki67.plot(x_values, y_values_ki67, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["STEM"]), linewidth=1.5,
+                 zorder=-10)
+    ax_wga.plot(x_values, y_values_wga, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["PANETH"]), linewidth=1.5,
+                zorder=-10)
+    ax_krt20.plot(x_values, y_values_krt20, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"]),
+                  linewidth=1.5, zorder=-10)
+    ax_lgr5.plot(x_values, y_values_lgr5, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["STEM"]), linewidth=1.5,
+                 zorder=-10)
 
     # Set the x-axis limits and y label
     ax_krt20.set_xlim(min([c.time_h() for c in _ExperimentCondition]) - 10,
@@ -263,12 +270,6 @@ def _plot_ratio(figure: Figure, results_stained: Dict[_ExperimentCondition, List
     ax.set_ylabel("WGA+ / (LGR5+ + 1) cell count")
     ax.set_xticks([condition.time_h() for condition in _ExperimentCondition])
     ax.set_xticklabels([condition.display_name() for condition in _ExperimentCondition], rotation=-45, ha="left")
-
-
-
-
-
-
 
 
 def _parse_experiment_name(name: Name) -> str:

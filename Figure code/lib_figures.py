@@ -2,6 +2,7 @@ import colorsys
 
 from typing import Tuple, Dict, Any, Union, Iterable, List
 
+import matplotlib.colors
 import numpy
 from anndata import AnnData
 from matplotlib import pyplot as plt
@@ -11,17 +12,17 @@ from numpy import ndarray
 from organoid_tracker.core.experiment import Experiment
 
 CELL_TYPE_PALETTE = {
-    "ENTEROCYTE": "#507B9D",
+    "ENTEROCYTE": "#6060FF",
     "KRT20_POSITIVE": "#507B9D",
     "ABSORPTIVE_PROGENY": "#0984e3",
     "SECRETORY": "#507B9D",
     "ENTEROENDOCRINE": "#507B9D",
     "OTHER_SECRETORY": "#507B9D",
-    "MATURE_GOBLET": "#DA5855",
+    "MATURE_GOBLET": "#B2007B",
     "SECRETIVE_PROGENY": "#507B9D",
     "WGA_PLUS": "#74b9ff",
-    "PANETH": "#F2A18E",
-    "STEM": "#B6E0A0",
+    "PANETH": "#FF7C7D",
+    "STEM": "#85FF8E",
     "DOUBLE_NEGATIVE": "#B6E0A0",
     "STEM_PUTATIVE": "#B7E1A1",
     "STEM_FETAL": "#77A2B5",
@@ -85,7 +86,7 @@ def new_figure(size: Tuple[float, float] = (4, 3), dpi: int = 300) -> Figure:
 
 def style_cell_type_name(cell_type_name: str) -> str:
     return (cell_type_name.lower().replace("mature_", "").replace("_", " ")
-            .replace("paneth", "Paneth").replace("stem fetal", "fetal stem"))
+            .replace("stem", "crypt").replace("paneth", "Paneth"))
 
 
 def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> Tuple[

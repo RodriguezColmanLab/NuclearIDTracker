@@ -1,8 +1,9 @@
 import math
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Iterable
 
 import matplotlib.colors
 import numpy
+import pandas
 import scanpy.plotting
 import scanpy.preprocessing
 import scanpy.tools
@@ -15,14 +16,19 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 import lib_data
 import lib_figures
+import lib_models
+from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 
 LDA_FILE = "../../Data/all_data.h5ad"
+_MODEL_FOLDER = r"../../Data/Models/epochs-1-neurons-0"
 
-_DATA_FILE = "../../Data/Predicted data.autlist"
-_EXPERIMENT_NAME = "x20190926pos01"
+_TRAJECTORIES_DATA_FILE = "../../Data/Predicted data.autlist"
+_TRAJECTORIES_EXPERIMENT_NAME = "x20190926pos01"
+
+_BACKGROUND_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 
 # Must be the last position in time, as we iterate back
 _PLOTTED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
@@ -129,31 +135,84 @@ def _extract_trajectories(experiment: Experiment, adata: AnnData, lda: LinearDis
                             .resample_5h())
 
 
+def _get_adata_predictions_selected_time_points(experiments: Iterable[Experiment]) -> AnnData:
+    """Gets the raw features, so that we can create a heatmap. Cells are indexed by _get_cell_key."""
+    data_array = list()
+    cell_type_list = list()
+    organoid_list = list()
+    cell_names = list()
+    # Collect position data for last 10 time points of each experiment
+    for experiment in experiments:
+        print("Loading", experiment.name)
+
+        position_data = experiment.position_data
+
+        for time_point in experiment.positions.time_points():
+            if time_point.time_point_number() < experiment.positions.last_time_point_number() - 5:
+                continue  # Prevent accumulating too many points
+            for position in experiment.positions.of_time_point(time_point):
+                position_data_array = lib_data.get_data_array(position_data, position, lib_data.STANDARD_METADATA_NAMES)
+                cell_type = position_data.get_position_data(position, "type")
+                if position_data_array is not None and cell_type is not None:
+                    data_array.append(position_data_array)
+                    cell_type_list.append(cell_type)
+                    organoid_list.append(experiment.name.get_name())
+                    cell_names.append(_get_cell_key(experiment, position))
+    data_array = numpy.array(data_array, dtype=numpy.float32)
+
+    adata = AnnData(data_array)
+    adata.var_names = lib_data.STANDARD_METADATA_NAMES
+    adata.obs_names = cell_names
+    adata.obs["cell_type"] = pandas.Categorical(cell_type_list)
+    adata.obs["organoid"] = pandas.Categorical(organoid_list)
+
+    return adata
+
+
+def _get_cell_key(experiment: Experiment, position: Position) -> str:
+    return f"{experiment.name}-{int(position.x)}-{int(position.y)}-{int(position.z)}"
+
+
 def main():
     # Loading and preprocessing
-    adata = scanpy.read_h5ad(LDA_FILE)
-    adata = lib_figures.standard_preprocess(adata)
+    adata_training = scanpy.read_h5ad(LDA_FILE)
+    adata_training = lib_figures.standard_preprocess(adata_training)
 
     # Remove cells that we cannot train on
-    adata = adata[adata.obs["cell_type_training"] != "NONE"]
+    adata_training = adata_training[adata_training.obs["cell_type_training"] != "NONE"]
 
     # Do the LDA
     lda = LinearDiscriminantAnalysis()
-    lda.fit(adata.X, adata.obs["cell_type_training"])
+    lda.fit(adata_training.X, adata_training.obs["cell_type_training"])
 
-    # Load the trajectories
-    experiments = list_io.load_experiment_list_file(_DATA_FILE)
-
+    # Extract trajectories
     trajectories = list()
-    for experiment in experiments:
-        if experiment.name.get_name() == _EXPERIMENT_NAME:
-            _extract_trajectories(experiment, adata, lda, trajectories)
+    for experiment in list_io.load_experiment_list_file(_TRAJECTORIES_DATA_FILE, load_images=False):
+        if experiment.name.get_name() == _TRAJECTORIES_EXPERIMENT_NAME:
+            _extract_trajectories(experiment, adata_training, lda, trajectories)
             break
+
+    # Extract plot background
+    adata_predictions = _get_adata_predictions_selected_time_points(list_io.load_experiment_list_file(_BACKGROUND_FILE, load_images=False))
+    model = lib_models.load_model(_MODEL_FOLDER)
+    parameters_name = model.get_input_output().input_mapping
+    parameters_order = numpy.array([parameters_name.index(name) for name in adata_predictions.var_names])
+    result = model.predict(adata_predictions.X[:, parameters_order])
+    cell_types = model.get_input_output().cell_type_mapping
+    colors = [lib_figures.get_mixed_cell_type_color(cell_types, result[i]) for i in range(len(result))]
 
     # Plot the LDA
     figure = lib_figures.new_figure(size=(3.5, 2.5))
     ax: Axes = figure.gca()
-    _plot_lda(ax, lda, adata)
+
+    # Continue processing for LDA background
+    adata_predictions = lib_figures.standard_preprocess(adata_predictions, filter=False, scale=False)
+    adata_predictions.X -= numpy.array(adata_training.var["mean"])
+    adata_predictions.X /= numpy.array(adata_training.var["std"])
+    plot_coords = lda.transform(adata_predictions.X)
+    ax.scatter(plot_coords[:, 0], plot_coords[:, 1], s=12, lw=0, c=colors)
+
+    # Plot trajectories on top of that
     for line in trajectories:
         # Plot a line
         ax.plot(line.x_values, line.y_values, color="#636e72", linewidth=1.5, zorder=4)
@@ -167,23 +226,10 @@ def main():
         ax.text(line.x_values[-1], line.y_values[-1], str(line.label))
 
     ax.set_aspect(1)
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(-5, 5)
     plt.show()
 
-
-def _plot_lda(ax: Axes, lda: LinearDiscriminantAnalysis, adata: AnnData):
-    plot_coords = lda.transform(adata.X)
-
-    # Plot the LDA
-    used_cell_types = adata.obs["cell_type_training"].array.categories
-    colors = [lib_figures.CELL_TYPE_PALETTE[cell_type] for cell_type in adata.obs["cell_type_training"]]
-    ax.scatter(plot_coords[:, 0], plot_coords[:, 1], s=15, lw=0, c=colors)
-
-    # Add legend for all the cell types
-    for cell_type in used_cell_types:
-        ax.scatter([], [], label=lib_figures.style_cell_type_name(cell_type), s=15, lw=0,
-                   color=lib_figures.CELL_TYPE_PALETTE[cell_type])
-    ax.set_title("Linear Discriminant Analysis")
-    ax.legend()
 
 
 if __name__ == "__main__":

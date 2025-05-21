@@ -11,7 +11,8 @@ from organoid_tracker.core import Name
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
-_DATA_FILE = "../../Data/Live and immunostaining multiple time points/Immunostaining young versus old.autlist"
+_DATA_FILE_STAINING = "../../Data/Live and immunostaining multiple time points/Immunostaining all.autlist"
+_DATA_FILE_LIVE = "../../Data/Live and immunostaining multiple time points/Live all.autlist"
 
 
 class _Age(Enum):
@@ -77,7 +78,7 @@ def _plot_stem_cell_counts(ax: Axes, stainings: List[_StainingCounts]):
     ax.bar(
         x_positions,
         ta_counts,
-        label="TA (KI67+, LGR5-)",
+        label="TA (KI67⁺ - LGR5⁺)",
         color=lib_figures.CELL_TYPE_PALETTE["UNLABELED"])
     bottom += numpy.array(ta_counts, dtype=numpy.uint32)
 
@@ -85,7 +86,7 @@ def _plot_stem_cell_counts(ax: Axes, stainings: List[_StainingCounts]):
     ax.bar(
         x_positions,
         lgr5_positive_counts,
-        label="Stem (LGR5+)",
+        label="Stem (LGR5⁺)",
         color=lib_figures.CELL_TYPE_PALETTE["STEM"],
         bottom=bottom
     )
@@ -95,7 +96,7 @@ def _plot_stem_cell_counts(ax: Axes, stainings: List[_StainingCounts]):
     ax.bar(
         x_positions,
         wga_positive_counts,
-        label="Paneth (WGA+)",
+        label="Paneth (WGA⁺)",
         color=lib_figures.CELL_TYPE_PALETTE["PANETH"],
         bottom=bottom
     )
@@ -105,7 +106,7 @@ def _plot_stem_cell_counts(ax: Axes, stainings: List[_StainingCounts]):
     ax.bar(
         x_positions,
         enterocyte_counts,
-        label="Enterocyte (KRT20+)",
+        label="Enterocyte (KRT20⁺)",
         color=lib_figures.CELL_TYPE_PALETTE["ENTEROCYTE"],
         bottom=bottom
     )
@@ -150,19 +151,33 @@ def main():
 
 
 def _count_stainings(stainings_old, stainings_young):
-    for experiment in list_io.load_experiment_list_file(_DATA_FILE, load_images=False):
-        position_data = experiment.position_data
+    experiments_live = list(list_io.load_experiment_list_file(_DATA_FILE_LIVE, load_images=False))
+    experiments_staining = list(list_io.load_experiment_list_file(_DATA_FILE_STAINING, load_images=False))
+    for experiment_staining in experiments_staining:
+        experiment_live = None
+        for experiment_live_candidate in experiments_live:
+            if experiment_live_candidate.name.get_name() == experiment_staining.name.get_name():
+                experiment_live = experiment_live_candidate
+                break
+        if experiment_live is None:
+            continue
+
 
         stainings = _StainingCounts()
-        for position in experiment.positions:
-            cell_type = position_markers.get_position_type(position_data, position)
+        for position in experiment_staining.positions.of_time_point(experiment_staining.first_time_point()):
+            cell_type = position_markers.get_position_type(experiment_staining.position_data, position)
+            if cell_type is None:
+                continue
+            stainings.add_cell(cell_type)
+        for position in experiment_live.positions.of_time_point(experiment_live.first_time_point()):
+            cell_type = position_markers.get_position_type(experiment_live.position_data, position)
             if cell_type is None:
                 continue
             stainings.add_cell(cell_type)
         if not stainings.has_stainings():
             continue
 
-        age = _get_age(experiment.name)
+        age = _get_age(experiment_staining.name)
         if age == _Age.YOUNG:
             stainings_young.append(stainings)
         elif age == _Age.OLD:

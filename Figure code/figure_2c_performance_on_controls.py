@@ -2,6 +2,7 @@ from typing import List
 
 import numpy
 from matplotlib import pyplot as plt
+from matplotlib.axes import Axes
 
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
@@ -55,7 +56,41 @@ def _compare_experiments(experiment_stained: Experiment, experiment_predicted: E
 
 def main():
     comparison = _calculate_confusion_matrix()
+    _show_bar_plot(comparison)
+    _show_confusion_matrix(comparison)
 
+
+def _show_bar_plot(comparison: _ConfusionMatrix):
+    cell_types = comparison.cell_types
+    confusion_matrix = comparison.confusion_matrix
+    fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
+
+    space_for_bars = 2.75
+
+    figure = lib_figures.new_figure()
+    ax: Axes = figure.gca()
+    for i, cell_type_immunostaining in enumerate(cell_types):
+        amount_correct_of_type = confusion_matrix[i, i]
+        amount_incorrect_of_type = numpy.sum(confusion_matrix[i]) - amount_correct_of_type
+        percentage_correct_of_type = confusion_matrix[i, i] / numpy.sum(confusion_matrix[i]) * 100
+        x_values = [i * space_for_bars + j for j in [0, 1]]
+        y_values = [percentage_correct_of_type, 100 - percentage_correct_of_type]
+        ax.bar(x_values, y_values, color=["#85ff8e", "#a214dd"],
+               width=1, align="edge")
+        ax.text(x_values[0] + 0.5, y_values[0] - 1, str(amount_correct_of_type), ha="center", va="top")
+        ax.text(x_values[1] + 0.5, y_values[1] + 1, str(amount_incorrect_of_type), ha="center", va="bottom")
+
+    ax.set_xticks([space_for_bars * i + 1 for i in range(len(cell_types))])
+    ax.set_xticklabels([lib_figures.style_cell_type_name(name) for name in cell_types])
+    ax.set_xlabel("Cell type from immunostaining")
+    ax.set_ylabel("Predicted types (%)")
+    ax.set_title(f"Accuracy: {fraction_correct * 100:.1f}%")
+    ax.set_ylim(0, 100)
+
+    plt.show()
+
+
+def _show_confusion_matrix(comparison: _ConfusionMatrix):
     figure = lib_figures.new_figure()
     ax = figure.gca()
 
@@ -81,7 +116,7 @@ def main():
     plt.show()
 
 
-def _calculate_confusion_matrix():
+def _calculate_confusion_matrix() -> _ConfusionMatrix:
     print("Loading staining data...")
     experiments_stained = list(list_io.load_experiment_list_file(_DATA_FILE_STAINING, load_images=False))
     print("Loading predicted data...")

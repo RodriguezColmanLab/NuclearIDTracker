@@ -16,8 +16,7 @@ from organoid_tracker.linking_analysis.lineage_drawing import LineageDrawing
 _DATA_FILE = "../../Data/Predicted data.autlist"
 _EXPERIMENT_NAME = "x20190926pos01"
 _PLOTTED_LINEAGE_TREES = [Position(192.02, 299.39, 5, time_point_number=1),  # Both absorptive and secretory cells
-                          Position(145.97, 333.90, 16, time_point_number=1),
-                          Position(203.45, 349.31, 12, time_point_number=1)]
+                          Position(145.97, 333.90, 16, time_point_number=1)]
 
 # Will have a small number at the bottom of the lineage tree
 _ANNOTATED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
@@ -86,7 +85,7 @@ def _draw_experiment(ax: Axes, experiment: Experiment):
         # If the time point is the first or last, then we don't want to use the probabilities of that time point
         # They might be unreliable due to the cell dividing or dying
         if track.will_divide() and time_point_number + 1 >= track.last_time_point_number():
-            return lib_figures.CELL_TYPE_PALETTE["STEM"]  # Always draw divisions in the color of stem cells
+            return 0.8, 0.8, 0.8  # Always draw divisions in gray
 
         position = track.find_position_at_time_point_number(time_point_number)
         cell_type_probabilities = _search_probabilities(experiment, position)

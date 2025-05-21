@@ -10,9 +10,8 @@ from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.imaging import list_io
 from organoid_tracker.position_analysis import position_markers
 
-_DATASET_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
-_MAX_PLOTTED_TIME_POINT = 118  # Makes all experiments have the same length
-
+_DATASET_FILE = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
+_MAX_PLOTTED_TIME_POINT = 300  # Makes all experiments have the same length
 
 class _CellCountsOverTime:
     """Shows the number of cells of different types over time for a single experiment."""
@@ -97,8 +96,8 @@ def main():
     ax_paneth.legend()
 
     # Set y-axis limits and ticks
-    y_lim_high = 325  # Used for the stem cells and enterocytes
-    y_lim_low = 55  # Used for the Paneth cells
+    y_lim_high = 430  # Used for the stem cells and enterocytes
+    y_lim_low = 90  # Used for the Paneth cells
     ax_stem.set_ylim(0, y_lim_high)
     ax_stem.set_yticks(numpy.arange(0, y_lim_high, 10), minor=True)
     ax_stem.set_yticks(numpy.arange(0, y_lim_high, 50), minor=False)
