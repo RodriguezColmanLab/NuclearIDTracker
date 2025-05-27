@@ -256,7 +256,7 @@ def _plot_ratio(figure: Figure, results_stained: Dict[_ExperimentCondition, List
         wga_positive_counts = numpy.array([result.wga_positive_count for result in condition_results])
         ki67_positive_counts = numpy.array([result.ki67_positive_count for result in condition_results])
         lgr5_positive_counts = numpy.array(results_lgr5[condition])
-        ratios = wga_positive_counts / (lgr5_positive_counts + 1)
+        ratios = wga_positive_counts / ki67_positive_counts
 
         ax.scatter(generator.normal(condition.time_h(), 1, len(ratios)), ratios,
                    color=lib_figures.CELL_TYPE_PALETTE["PANETH"], s=25, linewidth=0, alpha=0.8)
@@ -267,7 +267,7 @@ def _plot_ratio(figure: Figure, results_stained: Dict[_ExperimentCondition, List
     ax.plot(times_h, mean_ratios, color=_make_darker(lib_figures.CELL_TYPE_PALETTE["PANETH"]), linewidth=1.5)
 
     ax.set_xlabel("Time (h)")
-    ax.set_ylabel("WGA+ / (LGR5+ + 1) cell count")
+    ax.set_ylabel("WGA+ / Ki67+ cell count")
     ax.set_xticks([condition.time_h() for condition in _ExperimentCondition])
     ax.set_xticklabels([condition.display_name() for condition in _ExperimentCondition], rotation=-45, ha="left")
 

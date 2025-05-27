@@ -14,7 +14,7 @@ _TIME_INTERVAL_H = 15
 
 
 class _StemToXData:
-    """Stores the stemness of cells along the stem-to-X (Paneth, enterocyte) axis, for multiple time points."""
+    """Stores the stemness of cells along the stem-to-X (Paneth, paneth) axis, for multiple time points."""
     _bins: List[List[float]]
 
     def __init__(self):
@@ -37,81 +37,48 @@ class _StemToXData:
 
 def main():
     stem_to_paneth_data = _StemToXData()
-    stem_to_enterocyte_data = _StemToXData()
 
     for experiment in list_io.load_experiment_list_file(_DATA_FILE, load_images=False):
         _collect_experiment_data(experiment, into=stem_to_paneth_data, cell_to_axis_function=lib_data.find_stem_to_paneth_location)
-        _collect_experiment_data(experiment, into=stem_to_enterocyte_data, cell_to_axis_function=lib_data.find_stem_to_ec_location)
 
     figure = lib_figures.new_figure()
     times_h = stem_to_paneth_data.times_h()
-    all_stem_to_paneth_values = stem_to_paneth_data.values()
-    all_stem_to_ec_values = stem_to_enterocyte_data.values()
+    all_stem_to_ec_values = stem_to_paneth_data.values()
 
-    axes = figure.subplots(nrows=len(times_h), ncols=3, sharex="col", sharey="col", width_ratios=[0.75, 1, 1])
-    for i, ax_row in enumerate(axes):
-        for ax in ax_row:
-            ax.spines["top"].set_visible(False)
-            ax.spines["right"].set_visible(False)
+    axes = figure.subplots(nrows=len(times_h), ncols=1, sharex=False, sharey="col")
+    for i, ax in enumerate(axes):
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
-        ax_stem, ax_enterocyte, ax_paneth = ax_row
 
         # Plot stem bins
-        _, bins, patches = ax_stem.hist(all_stem_to_ec_values[i], bins=numpy.arange(0, 1, 0.02))
-        for j in range(len(bins) - 1):
-            bin_x = (bins[j] + bins[j + 1]) / 2
-            patches[j].set_facecolor(lib_figures.get_stem_to_ec_color(bin_x))
-
-        # Plot enterocyte bins
-        _, bins, patches = ax_enterocyte.hist(all_stem_to_ec_values[i], bins=numpy.arange(0, 1, 0.02))
-        for j in range(len(bins) - 1):
-            bin_x = (bins[j] + bins[j + 1]) / 2
-            patches[j].set_facecolor(lib_figures.get_stem_to_ec_color(bin_x))
-
-        # Plot Paneth bins
-        _, bins, patches = ax_paneth.hist(all_stem_to_paneth_values[i], bins=numpy.arange(0, 1, 0.02))
+        _, bins, patches = ax.hist(all_stem_to_ec_values[i], bins=numpy.arange(0, 1, 0.02))
         for j in range(len(bins) - 1):
             bin_x = (bins[j] + bins[j + 1]) / 2
             patches[j].set_facecolor(lib_figures.get_stem_to_paneth_color(bin_x))
 
-        ax_stem.set_xlim(0.5, 0.8)
-        ax_enterocyte.set_xlim(0.5, 0.1)
-        ax_paneth.set_xlim(0.8, 0.1)
+        ax.set_xlim(0.8, 0.1)
 
-        # Set axis labels and ticks
-        for ax in ax_row:
-            if i != len(times_h) - 1:
-                ax.spines["bottom"].set_visible(False)
-                ax.set_xticks([])
-            else:
-                ax.set_xticks(numpy.arange(min(ax.get_xlim()), max(ax.get_xlim()) + 0.01, 0.1))
+        if i != len(times_h) - 1:
+            ax.spines["bottom"].set_visible(False)
+            ax.set_xticks([])
+        else:
+            ax.set_xticks(numpy.arange(min(ax.get_xlim()), max(ax.get_xlim()) + 0.01, 0.1))
 
         if i == len(times_h) - 1:
-            ax_stem.set_xlabel("Stem-to-enterocyte axis")
-            ax_enterocyte.set_xlabel("Stem-to-enterocyte axis")
-            ax_paneth.set_xlabel("Stem-to-Paneth axis")
+            ax.set_xlabel("Stem-to-Paneth axis")
 
-        # Set y scale for stem and enterocyte (they are the same)
-        ax_stem.set_yscale("log")
-        ax_stem.set_ylim(8, 700)
-        ax_stem.set_yticks([10, 100])
-        ax_stem.set_yticklabels(["10", "100"])
-        ax_enterocyte.set_yscale("log")
-        ax_enterocyte.set_ylim(8, 700)
-        ax_enterocyte.set_yticks([10, 100])
-        ax_enterocyte.set_yticklabels(["10", "100"])
-
-        # Set y scale for Paneth cells
-        ax_paneth.set_yscale("log")
-        ax_paneth.set_ylim(0.5, 200)
-        ax_paneth.set_yticks([1, 10, 100])
-        ax_paneth.set_yticklabels(["1", "10", "100"])
+        # Set y scale for stem and paneth (they are the same)
+        ax.set_yscale("log")
+        ax.set_ylim(0.8, 700)
+        ax.set_yticks([1, 10, 100])
+        ax.set_yticklabels(["1", "10", "100"])
 
         # Add time to top left of panel
-        ax_paneth.text(1.0, 0.8, f"{times_h[i]}h", transform=ax_paneth.transAxes, horizontalalignment="right",
+        ax.text(1.0, 0.8, f"{times_h[i]}h", transform=ax.transAxes, horizontalalignment="right",
                 verticalalignment="top")
 
-    axes[len(axes) // 2, 0].set_ylabel("Cell count")
+    axes[len(axes) // 2].set_ylabel("Cell count")
     plt.show()
 
 

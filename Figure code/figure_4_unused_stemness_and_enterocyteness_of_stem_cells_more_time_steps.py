@@ -59,6 +59,10 @@ def main():
         if experiments_by_time_point[time_point] < max_number_of_experiments:
             del stem_to_ec_during_ablation[time_point]
 
+    # Remove some selected time points
+    del stem_to_ec_during_ablation[ablation_timings.find_closest_time_point(6, "h")]
+    del stem_to_ec_during_ablation[ablation_timings.find_closest_time_point(10, "h")]
+
     # Collect regeneration data
     stem_to_ec_regeneration_start = list()
     stem_to_ec_regeneration_6h = list()
