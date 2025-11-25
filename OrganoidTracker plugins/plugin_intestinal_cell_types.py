@@ -106,7 +106,7 @@ def _assign_types_to_experiment(experiment: Experiment):
                                                   _get_progeny_type(mother_type, next_type_1))
 
 
-def _assign_unlabeled_at_end_of_experiment(experiment):
+def _assign_unlabeled_at_end_of_experiment(experiment: Experiment):
     """Marks all positions at the end of the experiment without a cell type as unlabeled."""
     position_data = experiment.position_data
     last_time_point_number = experiment.positions.last_time_point_number()

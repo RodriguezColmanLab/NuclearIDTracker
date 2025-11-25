@@ -79,7 +79,7 @@ def _find_track_sequences(starting_track: LinkingTrack) -> Iterable[List[Linking
 def _get_cell_type_start(position_data: PositionData, all_cell_types: List[str], track_sequence: List[LinkingTrack]
                          ) -> Optional[str]:
     """Gets the most likely cell type at the start of the track sequence."""
-    probabilities = numpy.full((len(all_cell_types), _CELL_TYPE_TIME_POINT_COUNT), fill_value=numpy.NAN, dtype=numpy.float32)
+    probabilities = numpy.full((len(all_cell_types), _CELL_TYPE_TIME_POINT_COUNT), fill_value=numpy.nan, dtype=numpy.float32)
     i = 0
     for track in track_sequence:
         if i >= _CELL_TYPE_TIME_POINT_COUNT:
@@ -104,7 +104,7 @@ def _get_cell_type_start(position_data: PositionData, all_cell_types: List[str],
 def _get_cell_type_end(position_data: PositionData, all_cell_types: List[str], track_sequence: List[LinkingTrack]
                          ) -> Optional[str]:
     """Gets the most likely cell type at the end of the track sequence."""
-    probabilities = numpy.full((len(all_cell_types), _CELL_TYPE_TIME_POINT_COUNT), fill_value=numpy.NAN, dtype=numpy.float32)
+    probabilities = numpy.full((len(all_cell_types), _CELL_TYPE_TIME_POINT_COUNT), fill_value=numpy.nan, dtype=numpy.float32)
     i = 0
     for track in reversed(track_sequence):
         if i >= _CELL_TYPE_TIME_POINT_COUNT:

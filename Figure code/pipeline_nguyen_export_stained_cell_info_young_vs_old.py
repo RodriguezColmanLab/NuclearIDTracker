@@ -1,14 +1,8 @@
 """We plot all stem and Paneth cells on a stem-to-Paneth axis, and see how their amount changes over time."""
 import csv
-
 from enum import Enum, auto
 from typing import List, Optional, NamedTuple
 
-import numpy
-from matplotlib import pyplot as plt
-from matplotlib.axes import Axes
-
-import lib_figures
 from organoid_tracker.core import Name
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
@@ -21,13 +15,25 @@ _DATA_FILE_LIVE = "../../Data/Live and immunostaining multiple time points/Live 
 
 class _Age(Enum):
     YOUNG = auto()
-    OLD = auto()
+    UNTREATED = auto()
+    TREATMENT = auto()
+    TREATMENT_14H = auto()
+    TREATMENT_24H = auto()
+    TREATMENT_48H = auto()
 
     def get_age_text(self) -> str:
         if self == _Age.YOUNG:
             return "Day 2"
-        elif self == _Age.OLD:
+        elif self == _Age.UNTREATED:
             return "Day 5"
+        elif self == _Age.TREATMENT:
+            return "After treatment"
+        elif self == _Age.TREATMENT_14H:
+            return "14 hours after treatment"
+        elif self == _Age.TREATMENT_24H:
+            return "24 hours after treatment"
+        elif self == _Age.TREATMENT_48H:
+            return "48 hours after treatment"
         else:
             raise ValueError(f"Unknown age {self}")
 
@@ -128,7 +134,16 @@ def _get_age(experiment_name: Name) -> _Age:
     if "A1 »" in experiment_name.get_name():
         return _Age.YOUNG  # This well contained young organoids
     if "B2 »" in experiment_name.get_name():
-        return _Age.OLD  # This well contained old organoids
+        return _Age.UNTREATED  # This well contained old organoids
+    if "C1 »" in experiment_name.get_name() or "C2 »" in experiment_name.get_name():
+        return _Age.TREATMENT
+    if "D1 »" in experiment_name.get_name():
+        return _Age.TREATMENT_14H
+    if "E1 »" in experiment_name.get_name() or "E2 »" in experiment_name.get_name():
+        return _Age.TREATMENT_24H
+    if "F2 »" in experiment_name.get_name():
+        return _Age.TREATMENT_48H
+
     raise ValueError(f"Cannot determine age from experiment name {experiment_name}")
 
 

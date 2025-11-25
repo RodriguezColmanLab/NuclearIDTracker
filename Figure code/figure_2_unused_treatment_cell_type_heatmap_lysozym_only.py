@@ -22,7 +22,6 @@ _FEATURES_PER_STAINING = 5
 # Parameters specific to this script
 _SKIPPED_TREATMENTS = ["+CHIR +VPA", "-Rspondin"]
 _USED_STAININGS = ["lysozym-positive"]
-_USED_VAR_NAMES = ["intensity_factor_local", "surface_um2", "surface_um2_local", "solidity", "major_axis_length_um", "feret_diameter_max_um_local"]
 
 
 _TREATMENT_TRANSLATION = {
@@ -101,6 +100,8 @@ def main():
                             how="left")
     measurement_data_predicted.obs["immunostaining"] = combined["immunostaining"]
 
+
+
     # Find the most variable features for each staining
     most_variable_featurues_by_staining = _find_most_variable_features(measurement_data_predicted)
 
@@ -110,25 +111,83 @@ def main():
         for feature in features:
             print(f"  {var_names[feature]}")
 
-    # Subset measurement_data_predicted to only _USED_STAININGS
-    measurement_data_predicted = measurement_data_predicted[
-        measurement_data_predicted.obs["immunostaining"].isin(_USED_STAININGS)]
+    # Now, build the heatmap with treatments as columns, organoids as subcolumns, stainings as rows,
+    # and the most variable features as subrows
+    organoids = measurement_data_predicted.obs["organoid"].dtype.categories
 
-    # Scale the data based on the control treatment
-    control_data = measurement_data_predicted[measurement_data_predicted.obs["treatment"] == "Control"]
-    control_means = numpy.asarray(control_data.X.mean(axis=0)).flatten()
-    control_stdevs = numpy.asarray(control_data.X.std(axis=0)).flatten()
-    measurement_data_predicted.X = (measurement_data_predicted.X - control_means) / control_stdevs
+    # We only use the lysozym staining with the control and +DAPT +CHIR treatments
+    stainings = _USED_STAININGS
+    treatments = list(measurement_data_predicted.obs["treatment"].dtype.categories)
+    treatments.sort(reverse=True)  # This makes control appear on the left
+    heatmap = numpy.zeros((len(stainings) * _FEATURES_PER_STAINING, len(organoids)), dtype=numpy.float32)
 
-    # Reorder measurement_data_predicted.obs["treatment"] so that "Control" is first
-    treatment_categories = list(measurement_data_predicted.obs["treatment"].dtype.categories)
-    treatment_categories.remove("Control")
-    treatment_categories = ["Control"] + treatment_categories
-    measurement_data_predicted.obs["treatment"] = measurement_data_predicted.obs["treatment"].cat.reorder_categories(treatment_categories, ordered=True)
+    organoids_as_plotted = list()  # Essentially the column names
+    treatments_as_plotted = list()  # The treatments, corresponding to organoids_as_plotted
+    features_as_plotted = list()  # Essentially the row names
+    treatment_separation_lines = list()  # Vertical lines that separate the treatments
+    for staining_index, staining in enumerate(stainings):
 
-    # Create a heatmap of the most variable features across treatments and stainings
-    scanpy.plotting.heatmap(measurement_data_predicted, var_names=_USED_VAR_NAMES, groupby="treatment",
-                            swap_axes=True, cmap="RdBu_r", vmin=-4, vmax=4)
+        # We only want to list each organoid once on the X axis, not once per staining
+        organoids_as_plotted.clear()
+        treatments_as_plotted.clear()
+
+        # Find which features we're going to plot
+        for feature_index in most_variable_featurues_by_staining[staining]:
+            features_as_plotted.append(lib_figures.style_variable_name(var_names[feature_index]))
+
+        heatmap_column = 0
+        data_subset_staining = measurement_data_predicted[measurement_data_predicted.obs["immunostaining"] == staining]
+        for j, treatment in enumerate(treatments):
+            data_subset_treatment_staining = data_subset_staining[data_subset_staining.obs["treatment"] == treatment]
+
+            # Get all organoids in this treatment (even if they don't have any cells of the current staining)
+            data_subset_treatment = measurement_data_predicted[measurement_data_predicted.obs["treatment"] == treatment]
+            organoids_in_treatment = list(set(data_subset_treatment.obs["organoid"]))
+
+            for k, organoid in enumerate(organoids_in_treatment):
+                data_subset_organoid = data_subset_treatment_staining[
+                    data_subset_treatment_staining.obs["organoid"] == organoid]
+                if data_subset_organoid.n_obs > 0:
+                    heatmap[staining_index * _FEATURES_PER_STAINING:staining_index * _FEATURES_PER_STAINING
+                            + _FEATURES_PER_STAINING, heatmap_column]\
+                        = data_subset_organoid.X.mean(axis=0)[most_variable_featurues_by_staining[staining]]
+                else:
+                    heatmap[staining_index * _FEATURES_PER_STAINING:staining_index * _FEATURES_PER_STAINING
+                            + _FEATURES_PER_STAINING, heatmap_column] = numpy.nan
+                heatmap_column += 1
+                organoids_as_plotted.append(organoid)
+                treatments_as_plotted.append(treatment)
+
+            treatment_separation_lines.append(len(organoids_as_plotted) - 0.5)
+
+    # Subtract the control values
+    control_indices = numpy.array([treatments_as_plotted[i] == "Control" for i in range(len(treatments_as_plotted))])
+    control_features_average = heatmap[:, control_indices].mean(axis=1)
+    heatmap -= control_features_average[:, numpy.newaxis]
+
+    # Normalize the heatmap per row using the standard deviation
+    # Filter out NaNs, since they would cause the standard deviation to be NaN
+    for row in range(heatmap.shape[0]):
+        row_data = heatmap[row, :]
+        row_data = row_data[~numpy.isnan(row_data)]
+        heatmap[row, :] /= row_data.std()
+
+    # Plot the heatmap
+    figure = lib_figures.new_figure()
+    ax = figure.gca()
+    ax.imshow(heatmap, cmap="RdBu_r", vmin=-5, vmax=5)
+    ax.set_xticks(numpy.arange(len(organoids_as_plotted)), organoids_as_plotted, rotation=-45,
+                  horizontalalignment="left")
+    ax.set_yticks(numpy.arange(len(features_as_plotted)), features_as_plotted)
+    # Add annotations for the stainings
+    for i, staining in enumerate(stainings):
+        ax.axhline(i * _FEATURES_PER_STAINING - 0.5, color="black")
+        ax.text(len(organoids_as_plotted), i * _FEATURES_PER_STAINING + _FEATURES_PER_STAINING / 2, staining,
+                ha="left", va="center", rotation=-45)
+    # Add lines for the treatments
+    for line in treatment_separation_lines:
+        ax.axvline(line, color="black")
+    plt.show()
 
 
 def _find_most_variable_features(measurement_data_predicted: AnnData) -> Dict[str, numpy.ndarray]:

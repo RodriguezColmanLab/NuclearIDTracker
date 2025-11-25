@@ -54,6 +54,7 @@ def main():
             continue  # Skip these experiments
         if "chir vpa" in experiment_staining.name.get_name():
             continue  # Also skipped, as KRT20 signal was everywhere, which indicates the experiment failed
+        print(experiment_staining.name, len(experiment_staining.positions))
         for position in experiment_staining.positions:
             cell_type = position_markers.get_position_type(experiment_staining.position_data, position)
             if cell_type is None:

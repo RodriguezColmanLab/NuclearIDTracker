@@ -1,5 +1,4 @@
-from collections import defaultdict
-from typing import Optional, Dict, Iterable, List
+from typing import Optional, List
 
 import numpy
 from matplotlib import pyplot as plt
@@ -7,9 +6,7 @@ from matplotlib import pyplot as plt
 import lib_figures
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
-from organoid_tracker.position_analysis import position_markers
 
 _DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 _BIN_COUNT = 20
@@ -26,13 +23,15 @@ _MIN_BIN_FOOTAGE_H = 10
 class _SingleBinData:
     hours_seen: float
     divisions_seen: int
+    cells_seen: int
 
     def __init__(self):
         self.hours_seen = 0
         self.divisions_seen = 0
+        self.cells_seen = 0
 
     def __repr__(self):
-        return f"CellTypeData(hours_seen={self.hours_seen}, divisions_seen={self.divisions_seen})"
+        return f"CellTypeData(hours_seen={self.hours_seen}, divisions_seen={self.divisions_seen}, cells_seen={self.cells_seen})"
 
     def __add__(self, other):
         if not isinstance(other, _SingleBinData):
@@ -40,6 +39,7 @@ class _SingleBinData:
         result = _SingleBinData()
         result.hours_seen = self.hours_seen + other.hours_seen
         result.divisions_seen = self.divisions_seen + other.divisions_seen
+        result.cells_seen = self.cells_seen + other.cells_seen
         return result
 
 
@@ -57,7 +57,12 @@ class _ExperimentData:
             result.bins[i] = self.bins[i] + other.bins[i]
         return result
 
-    def add_entry(self, stem_to_ec_location: float, hours: float, *, division_at_end: bool):
+    def add_entry(self, stem_to_ec_location: float, hours: float, *, division_at_end: bool, count_cell: bool):
+        """Adds an entry to the appropriate bin.
+
+        count_cell is normally True, but should be set to False if the cell is dividing and both daughter cells are
+        included in the analysis. Otherwise, a single dividing cell would be counted as 3 cells (mother + 2 daughters).
+        """
         bin_index = int(stem_to_ec_location * _BIN_COUNT)
         if bin_index == len(self.bins):
             bin_index -= 1  # For the edge case where stem_to_ec_location is exactly 1.0
@@ -65,11 +70,13 @@ class _ExperimentData:
         self.bins[bin_index].hours_seen += hours
         if division_at_end:
             self.bins[bin_index].divisions_seen += 1
+        if count_cell:
+            self.bins[bin_index].cells_seen += 1
 
 
-def _find_stem_to_ec_location(experiment: Experiment, track: LinkingTrack) -> Optional[float]:
-    """Finds the point the cell lies on the stem-to-paneth axis. If a cell has no predicted type, or a type
-    other than stem or paneth, None is returned."""
+def _find_stem_to_paneth_location(experiment: Experiment, track: LinkingTrack) -> Optional[float]:
+    """Finds the point the cell lies on the stem-to-Paneth axis. If a cell has no predicted type, or a type
+    other than stem or Paneth, None is returned."""
     defined_cell_types = experiment.global_data.get_data("ct_probabilities")
     if defined_cell_types is None:
         raise ValueError("No cell type probabilities found in experiment data")
@@ -89,7 +96,7 @@ def _find_stem_to_ec_location(experiment: Experiment, track: LinkingTrack) -> Op
         return None
     overall_probabilities /= included_position_count  # Convert to average probabilities
 
-    # Discard all but stem and paneth
+    # Discard all but stem and Paneth
     cell_type = defined_cell_types[numpy.argmax(overall_probabilities)]
     if cell_type not in {"STEM", "PANETH"}:
         return None
@@ -102,7 +109,7 @@ def _find_stem_to_ec_location(experiment: Experiment, track: LinkingTrack) -> Op
     stemness += remainder / 2
     panethness += remainder / 2
 
-    # Now stemness equals 1 - panethness, so we have our scale from stem to paneth
+    # Now stemness equals 1 - panethness, so we have our scale from stem to Paneth
     return panethness
 
 
@@ -133,20 +140,23 @@ def main():
     for bin_index, rate in enumerate(division_rate_day):
         hours_seen_at_index = hours_seen[bin_index]
         if hours_seen_at_index > _MIN_BIN_FOOTAGE_H:
-            days_text = f"{hours_seen_at_index / 24:.1f}d" if hours_seen_at_index < 240 else str(int(hours_seen_at_index / 24)) + "d"
-            ax.text(bin_index, rate, days_text, ha="center", va="bottom")
+            cells_seen = str(summed_data.bins[bin_index].cells_seen)
+            ax.text(bin_index, rate, cells_seen, ha="center", va="bottom")
 
     # Add spread of division rates per experiment
     for bin_index in bin_indices:
-        hours_seen_at_index = [experiment_data.bins[bin_index].hours_seen for experiment_data in data_by_experiment.values()]
+        hours_seen_at_index = [experiment_data.bins[bin_index].hours_seen for experiment_data in
+                               data_by_experiment.values()]
         if sum(hours_seen_at_index) < _MIN_BIN_FOOTAGE_H:
             continue  # This bin is not drawn
 
         divisions_seen = [experiment_data.bins[bin_index].divisions_seen for experiment_data in
                           data_by_experiment.values()]
-        division_rate_h = [divisions / hours for hours, divisions in zip(hours_seen_at_index, divisions_seen) if hours > _MIN_BIN_FOOTAGE_H]
+        division_rate_h = [divisions / hours for hours, divisions in zip(hours_seen_at_index, divisions_seen) if
+                           hours > _MIN_BIN_FOOTAGE_H]
         division_rate_day = [rate * 24 for rate in division_rate_h]
-        ax.scatter([bin_index] * len(division_rate_day), division_rate_day, color="black", s=13, linewidth=1, edgecolor="white")
+        ax.scatter([bin_index] * len(division_rate_day), division_rate_day, color="black", s=13, linewidth=1,
+                   edgecolor="white")
 
     ax.set_ylabel("Division rate (divisions / cell / day)")
     ax.set_xlabel("Stem-to-Paneth-axis")
@@ -167,11 +177,11 @@ def main():
 
 
 def _get_experiment_division_rate(experiment: Experiment) -> _ExperimentData:
-    """Collects the division rate data for an experiment, by stem-to-paneth likelihood."""
+    """Collects the division rate data for an experiment, by stem-to-Paneth likelihood."""
     experiment_data = _ExperimentData()
     timings = experiment.images.timings()
     for track in experiment.links.find_all_tracks():
-        stem_to_ec_location = _find_stem_to_ec_location(experiment, track)
+        stem_to_ec_location = _find_stem_to_paneth_location(experiment, track)
         if stem_to_ec_location is None:
             continue
 
@@ -181,7 +191,23 @@ def _get_experiment_division_rate(experiment: Experiment) -> _ExperimentData:
         if track_duration_h < _MIN_TRACK_DURATION_H:
             continue
 
-        experiment_data.add_entry(stem_to_ec_location, track_duration_h, division_at_end=track.will_divide())
+        # If a cell divides into two, and both daughters are included in the analysis, we do not count the mother cell.
+        # Otherwise, a single dividing cell would be counted as 3 cells (mother + 2 daughters), instead of 2 cells.
+        will_divide = track.will_divide()
+        daughters_included_for_division_rate = True
+        for daughter_track in track.get_next_tracks():
+            if _find_stem_to_paneth_location(experiment, daughter_track) is None or timings.get_time_h_since_start(
+                    track.last_time_point() + 1) - timings.get_time_h_since_start(
+                track.first_time_point()) < _MIN_TRACK_DURATION_H:
+                daughters_included_for_division_rate = False
+                break
+
+        count_cell = True
+        if will_divide and daughters_included_for_division_rate:
+            count_cell = False
+
+        experiment_data.add_entry(stem_to_ec_location, track_duration_h, division_at_end=will_divide,
+                                  count_cell=count_cell)
     return experiment_data
 
 

@@ -97,7 +97,7 @@ def main():
         if "dapt chir" in experiment.name.get_name():
             continue  # In this panel, we only plot control and No Rspondin
         condition = _get_condition(experiment)
-        print(experiment.name, condition)
+        print(experiment.name, condition, len(experiment.positions))
         for position in experiment.positions:
             cell_type = position_markers.get_position_type(experiment.position_data, position)
             if cell_type is None:
