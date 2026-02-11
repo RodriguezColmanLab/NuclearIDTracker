@@ -1,4 +1,5 @@
-*Work in progress*
+> [!TIP]
+> Dear imaging analysis enthusiast: This pipeline was last updated in 2024. Several improvements and modifications have been implemented since then, and an updated version is currently in preparation. Stay tuned. For further information, feel free to reach out to our lab!
 
 # NuclearIDTracker
 
