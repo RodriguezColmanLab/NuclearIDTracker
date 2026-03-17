@@ -7,6 +7,7 @@ import numpy
 from numpy import ndarray
 
 from organoid_tracker.core.position import Position
+from organoid_tracker.core.position_collection import PositionCollection
 from organoid_tracker.core.position_data import PositionData
 
 STANDARD_METADATA_NAMES = ["neighbor_distance_variation", "neighbor_distance_median_um", "intensity_factor_local",
@@ -36,7 +37,7 @@ def deduplicate_cells(adata: AnnData):
     return adata[full_mask].copy()
 
 
-def get_data_array(position_data: PositionData, position: Position, input_names: List[str]) -> Optional[ndarray]:
+def get_data_array(position_data: PositionCollection, position: Position, input_names: List[str]) -> Optional[ndarray]:
     """Extract the data array from the given position."""
     array = numpy.empty(len(input_names), dtype=numpy.float32)
     for i, name in enumerate(input_names):

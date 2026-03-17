@@ -69,6 +69,7 @@ def _show_bar_plot(comparison: _ConfusionMatrix):
 
     figure = lib_figures.new_figure()
     ax: Axes = figure.gca()
+    x_labels = list()
     for i, cell_type_immunostaining in enumerate(cell_types):
         amount_correct_of_type = confusion_matrix[i, i]
         amount_incorrect_of_type = numpy.sum(confusion_matrix[i]) - amount_correct_of_type
@@ -79,9 +80,10 @@ def _show_bar_plot(comparison: _ConfusionMatrix):
                width=1, align="edge")
         ax.text(x_values[0] + 0.5, y_values[0] - 1, str(amount_correct_of_type), ha="center", va="top")
         ax.text(x_values[1] + 0.5, y_values[1] + 1, str(amount_incorrect_of_type), ha="center", va="bottom")
+        x_labels.append(lib_figures.style_cell_type_name(cell_type_immunostaining) + f" ({percentage_correct_of_type:.1f}%)")
 
     ax.set_xticks([space_for_bars * i + 1 for i in range(len(cell_types))])
-    ax.set_xticklabels([lib_figures.style_cell_type_name(name) for name in cell_types])
+    ax.set_xticklabels(x_labels)
     ax.set_xlabel("Cell type from immunostaining")
     ax.set_ylabel("Predicted types (%)")
     ax.set_title(f"Accuracy: {fraction_correct * 100:.1f}%")
