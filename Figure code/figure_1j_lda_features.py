@@ -17,7 +17,7 @@ _COLORMAP = matplotlib.colors.LinearSegmentedColormap.from_list("my_cmap", ["#EC
 def main():
     # Loading and preprocessing
     adata = scanpy.read_h5ad(INPUT_FILE)
-    adata = lib_figures.standard_preprocess(adata, log1p=False, scale=False)
+    adata = lib_figures.standard_preprocess(adata, log1p=False, scale=False)  # So only filtering
 
     # Remove cells that we cannot train on
     adata = adata[adata.obs["cell_type_training"] != "NONE"]

@@ -15,6 +15,7 @@ from organoid_tracker.core.image_loader import ImageChannel
 from organoid_tracker.core.images import Image
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
+from organoid_tracker.core.position_collection import PositionCollection
 from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.core.resolution import ImageResolution
 from organoid_tracker.gui import dialog
@@ -80,10 +81,11 @@ class _OurProperties:
     def get(self, label: int, param: _SingleCellParam) -> float:
         return self._values[label, param.value - 1]
 
-    def store(self, label_to_position: Dict[int, Position], position_data: PositionData):
+    def store(self, label_to_position: Dict[int, Position], position_data: PositionCollection):
         self._calculate_neighborhood()
 
         for label, position in label_to_position.items():
+            position_data.add(position)
             position_data.set_position_data(position, "neighbor_distance_median_um",
                                             float(self._neighbor_distances_and_variation[label, 0]))
             position_data.set_position_data(position, "neighbor_distance_mean_um",
@@ -175,28 +177,28 @@ class _AnalyzeShapesTask(Task):
         self._nucleus_channel = nucleus_channel
         self._remove_bordering = remove_bordering
 
-    def compute(self) -> List[PositionData]:
+    def compute(self) -> List[PositionCollection]:
         return [_analyze_shapes(experiment_copy, self._segmentation_channel, self._nucleus_channel,
                                 self._remove_bordering) for experiment_copy in
                 self._experiment_copies]
 
-    def on_finished(self, results: List[PositionData]):
+    def on_finished(self, results: List[PositionCollection]):
         for open_tab, result in zip(self._open_tabs, results):
-            position_data = open_tab.experiment.position_data
-            # Remove old data
+            position_data = open_tab.experiment.positions
+            # Remove old metadata
             for data_name in _get_all_keys():
                 position_data.delete_data_with_name(data_name)
 
-            open_tab.experiment.position_data.merge_data(result)
+            open_tab.experiment.positions.merge_data(result)
             open_tab.undo_redo.clear()
         dialog.popup_message("Extraction finished", "Stored all the metadata of the positions.")
 
 
 def _analyze_shapes(experiment: Experiment, segmentation_channel: ImageChannel, nucleus_channel: ImageChannel,
-                    remove_bordering: bool = True) -> PositionData:
+                    remove_bordering: bool = True) -> PositionCollection:
     """Measures on the experiment."""
     resolution = experiment.images.resolution()
-    results = PositionData()
+    results = PositionCollection()
 
     import skimage.measure
     for time_point in experiment.images.time_points():

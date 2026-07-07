@@ -7,7 +7,7 @@ from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.marker import Marker
 from organoid_tracker.core.position import Position
 from organoid_tracker.core.position_data import PositionData
-from organoid_tracker.core.spline import Spline
+from organoid_tracker.core.spline import Spline, SplineCheckpoint
 from organoid_tracker.gui import dialog
 from organoid_tracker.gui.window import Window
 from organoid_tracker.position_analysis import position_markers
@@ -45,13 +45,13 @@ UNLABELED = Marker([Position], "UNLABELED", "unlabeled", (150, 150, 150))
 # Markers that mark something else
 LUMEN = Marker([Beacon], "LUMEN", "lumen", (255, 20, 20))
 CRYPT = Marker([Spline], "CRYPT", "crypt axis", (255, 0, 0), is_axis=True)
-
+CRYPT_NECK = Marker([SplineCheckpoint], "CRYPT_NECK", "crypt neck", (0, 255, 0))
 
 def get_markers() -> List[Marker]:
     return [STEM_PUTATIVE, STEM_PROGENY, STEM, STEM_FETAL, ABSORPTIVE_PRECURSOR, ABSORPTIVE_PROGENY, M_CELL, ENTEROCYTE,
             OTHER_DIFFERENTIATED, PANETH_PRECURSOR, PANETH, SECRETIVE_PRECURSOR, SECRETIVE_PROGENY, SECRETORY,
             MATURE_GOBLET, GOBLET, ENTEROENDOCRINE, TUFT, UNLABELED, WGA_PLUS, LUMEN] \
-        + [CRYPT]
+        + [CRYPT, CRYPT_NECK]
 
 
 def get_menu_items(window: Window) -> Dict[str, Any]:

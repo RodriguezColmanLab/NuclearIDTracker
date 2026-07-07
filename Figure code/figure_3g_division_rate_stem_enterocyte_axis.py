@@ -1,15 +1,15 @@
-from collections import defaultdict
-from typing import Optional, Dict, Iterable, List
+import itertools
+from typing import Optional, List
 
 import numpy
+import scipy.stats
 from matplotlib import pyplot as plt
+from pandas.core import flags
 
 import lib_figures
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
-from organoid_tracker.position_analysis import position_markers
 
 _DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 _BIN_COUNT = 20
@@ -45,12 +45,26 @@ class _SingleBinData:
         result.cells_seen = self.cells_seen + other.cells_seen
         return result
 
+    def division_rate_day(self) -> float | None:
+        if self.hours_seen == 0:
+            return None
+        division_rate_h = self.divisions_seen / self.hours_seen
+        return float(division_rate_h * 24)
+
 
 class _ExperimentData:
     bins: List[_SingleBinData]
 
+    _single_hours_stem: list[float]
+    _single_hours_ta: list[float]
+    _single_hours_entero: list[float]
+
     def __init__(self):
         self.bins = [_SingleBinData() for _ in range(_BIN_COUNT)]
+
+        self._single_hours_stem = list()
+        self._single_hours_ta = list()
+        self._single_hours_entero = list()
 
     def __add__(self, other):
         if not isinstance(other, _ExperimentData):
@@ -58,6 +72,9 @@ class _ExperimentData:
         result = _ExperimentData()
         for i in range(len(self.bins)):
             result.bins[i] = self.bins[i] + other.bins[i]
+            result._single_hours_ta = self._single_hours_ta + other._single_hours_ta
+            result._single_hours_entero = self._single_hours_entero + other._single_hours_entero
+            result._single_hours_stem = self._single_hours_stem + other._single_hours_stem
         return result
 
     def add_entry(self, stem_to_ec_location: float, hours: float, *, division_at_end: bool, count_cell: bool):
@@ -66,6 +83,13 @@ class _ExperimentData:
         count_cell is normally True, but should be set to False if the cell is dividing and both daughter cells are
         included in the analysis. Otherwise, a single dividing cell would be counted as 3 cells (mother + 2 daughters).
         """
+        if stem_to_ec_location > 0.55:
+            self._single_hours_stem.append(hours)
+        elif stem_to_ec_location > 0.4:
+            self._single_hours_ta.append(hours)
+        else:
+            self._single_hours_entero.append(hours)
+
         bin_index = int(stem_to_ec_location * _BIN_COUNT)
         if bin_index == len(self.bins):
             bin_index -= 1  # For the edge case where stem_to_ec_location is exactly 1.0
@@ -76,6 +100,21 @@ class _ExperimentData:
         if count_cell:
             self.bins[bin_index].cells_seen += 1
 
+    def get_merged_bin(self, ec_to_stem_location_min: float, ec_to_stem_location_max: float) -> _SingleBinData:
+        """Gets a merged bin from the min to max location. Example: from 0.45 to 0.55 should return the merge of two bins."""
+        bin_index_max = int((1 - ec_to_stem_location_min) * _BIN_COUNT)
+        bin_index_min = int((1 - ec_to_stem_location_max) * _BIN_COUNT)
+        merged_bin = None
+        for bin_index in range(bin_index_min, bin_index_max):
+            bin = self.bins[bin_index]
+            if merged_bin is None:
+                merged_bin = bin
+            else:
+                merged_bin = merged_bin + bin
+        if merged_bin is None:
+            raise ValueError(f"No bins in range {ec_to_stem_location_min} to {ec_to_stem_location_max}")
+        return merged_bin
+
 
 def _find_stem_to_ec_location(experiment: Experiment, track: LinkingTrack) -> Optional[float]:
     """Finds the point the cell lies on the stem-to-enterocyte axis. If a cell has no predicted type, or a type
@@ -84,12 +123,11 @@ def _find_stem_to_ec_location(experiment: Experiment, track: LinkingTrack) -> Op
     if defined_cell_types is None:
         raise ValueError("No cell type probabilities found in experiment data")
 
-    position_data = experiment.position_data
     overall_probabilities = numpy.zeros(len(defined_cell_types), dtype=float)
     included_position_count = 0
 
     for position in track.positions():
-        probabilities = position_data.get_position_data(position, "ct_probabilities")
+        probabilities = experiment.positions.get_position_data(position, "ct_probabilities")
         if probabilities is None:
             continue
         overall_probabilities += probabilities
@@ -116,11 +154,59 @@ def _find_stem_to_ec_location(experiment: Experiment, track: LinkingTrack) -> Op
     return enterocyteness
 
 
+def _print_p(summed_data: _ExperimentData):
+    print(scipy.stats.ttest_ind(summed_data._single_hours_stem, summed_data._single_hours_ta))
+    print(scipy.stats.ttest_ind(summed_data._single_hours_ta, summed_data._single_hours_entero))
+    print(scipy.stats.ttest_ind(summed_data._single_hours_stem, summed_data._single_hours_entero))
+
+
+    stem_start = 0.55
+    stem_end = 1.0
+
+    ta_start = 0.4
+    ta_end = stem_start
+
+    enterocyte_start = 0.0
+    enterocyte_end = ta_start
+
+    merged_bins = [
+        summed_data.get_merged_bin(stem_start, stem_end),
+        summed_data.get_merged_bin(ta_start, ta_end),
+        summed_data.get_merged_bin(enterocyte_start, enterocyte_end)
+    ]
+    names = ["stem", "ta", "enterocyte"]
+    division_counts = [merged_bin.divisions_seen for merged_bin in merged_bins]
+    cells_seen = [merged_bin.cells_seen for merged_bin in merged_bins]
+    time_per_cell = [float(merged_bin.hours_seen / merged_bin.cells_seen) for merged_bin in merged_bins]
+
+    # Find all possible combinations of pairs of cell type names
+    for cell_type_a, cell_type_b in itertools.combinations(names, 2):
+        divisions_a = division_counts[names.index(cell_type_a)]
+        divisions_b = division_counts[names.index(cell_type_b)]
+
+        cells_seen_a = cells_seen[names.index(cell_type_a)]
+        cells_seen_b = cells_seen[names.index(cell_type_b)]
+
+        contingency = [
+            [divisions_a, cells_seen_a - divisions_a],
+            [divisions_b, cells_seen_b - divisions_b],
+        ]
+
+        # Perform chi-square test of independence on the contingency table
+        result = scipy.stats.fisher_exact(contingency)
+        print(cell_type_a + " vs " + cell_type_b + ": " + str(result.pvalue))
+
+
+
+def _filter_none(numbers: list[float | None]) -> list[float ]:
+    return [number for number in numbers if number is not None]
+
+
 def main():
     experiments = list_io.load_experiment_list_file(_DATA_FILE, load_images=False)
 
     # Collect data by experiment
-    data_by_experiment = dict()
+    data_by_experiment: dict[str, _ExperimentData] = dict()
     for experiment in experiments:
         data_by_experiment[experiment.name.get_name()] = _get_experiment_division_rate(experiment)
     summed_data = sum(data_by_experiment.values(), _ExperimentData())
@@ -157,9 +243,12 @@ def main():
                           data_by_experiment.values()]
         division_rate_h = [divisions / hours for hours, divisions in zip(hours_seen_at_index, divisions_seen) if
                            hours > _MIN_BIN_FOOTAGE_H]
-        division_rate_day = [rate * 24 for rate in division_rate_h]
+        division_rate_day = [float(rate * 24) for rate in division_rate_h]
         ax.scatter([bin_index] * len(division_rate_day), division_rate_day, color="black", s=13, linewidth=1,
                    edgecolor="white")
+
+    # Print statistics
+    _print_p(summed_data)
 
     ax.set_ylabel("Division rate (divisions / cell / day)")
     ax.set_xlabel("Stem-to-enterocyte-axis")

@@ -17,6 +17,8 @@ from organoid_tracker.core.position import Position
 from organoid_tracker.imaging import list_io
 from organoid_tracker.linking import nearby_position_finder
 
+import lib_figures
+
 _LIST_FILE = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
 _OUTPUT_FILE = "E:/Scratch/Figures/movie_colored_{experiment}.tif"
 
@@ -94,7 +96,7 @@ def _get_image(experiment: Experiment, time_point: TimePoint, nucleus_channel: I
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:
     """Gives the cell type probabilities of the position. If not found, then it checks whether they are there in the
     previous or next time point, and returns those."""
-    probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
+    probabilities = experiment.positions.get_position_data(position, "ct_probabilities")
     if probabilities is not None:
         return probabilities
 
@@ -106,7 +108,7 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
     for search_position in [past_postiion, future_position, past_past_position, future_future_position]:
         if search_position is None:
             continue
-        probabilities = experiment.position_data.get_position_data(search_position, "ct_probabilities")
+        probabilities = experiment.positions.get_position_data(search_position, "ct_probabilities")
         if probabilities is not None:
             return probabilities
     return None
@@ -118,17 +120,6 @@ def _clip(probability: float) -> float:
     if probability > 1:
         return 1
     return probability
-
-
-def _scale_probabilities(probabilities: List[float]) -> List[float]:
-    # Scales the probabilities so that the max is 1, and everything less than 50% of the max is 0
-    # In this way, we mostly see the dominant cell type
-    max_probability = max(probabilities)
-    min_plotted_probability = max_probability * 0.5
-
-    probabilities = [(probability - min_plotted_probability) / (max_probability - min_plotted_probability) for probability in probabilities]
-
-    return [_clip(probability) for probability in probabilities]
 
 
 def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: int, segmentation_image: Image):
@@ -156,12 +147,7 @@ def _get_cell_types_image_rgb(experiment: Experiment, time_point: TimePoint, z: 
         probabilities = _search_probabilities(experiment, position)
         if probabilities is None:
             continue
-        probabilities = _scale_probabilities(probabilities)
-
-        # Calculate the desired color
-        color = numpy.array([probabilities[cell_types.index("PANETH")],
-                             probabilities[cell_types.index("STEM")],
-                             probabilities[cell_types.index("ENTEROCYTE")]])
+        color = lib_figures.get_mixed_cell_type_color(cell_types, probabilities)
 
         # Color the target image by the calculated color
         for i in range(len(color)):

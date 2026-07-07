@@ -31,7 +31,7 @@ def main():
 def _search_probabilities(experiment: Experiment, position: Position) -> Optional[List[float]]:
     """Gives the cell type probabilities of the position. If not found, then it checks whether they are there in the
     previous or next time point, and returns those."""
-    probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
+    probabilities = experiment.positions.get_position_data(position, "ct_probabilities")
     if probabilities is not None:
         return probabilities
 
@@ -39,13 +39,13 @@ def _search_probabilities(experiment: Experiment, position: Position) -> Optiona
     future_position = experiment.links.find_single_future(position)
     for i in range(10):
         if past_position is not None:
-            probabilities = experiment.position_data.get_position_data(past_position, "ct_probabilities")
+            probabilities = experiment.positions.get_position_data(past_position, "ct_probabilities")
             if probabilities is not None:
                 return probabilities
             past_position = experiment.links.find_single_past(past_position)
 
         if future_position is not None:
-            probabilities = experiment.position_data.get_position_data(future_position, "ct_probabilities")
+            probabilities = experiment.positions.get_position_data(future_position, "ct_probabilities")
             if probabilities is not None:
                 return probabilities
             future_position = experiment.links.find_single_future(future_position)
@@ -66,7 +66,7 @@ def _find_initial_enterocyteness(experiment: Experiment, track: LinkingTrack) ->
 
     enterocyte_probabilities = list()
     for i, position in enumerate(track.positions()):
-        probabilities = experiment.position_data.get_position_data(position, "ct_probabilities")
+        probabilities = experiment.positions.get_position_data(position, "ct_probabilities")
         if probabilities is None:
             continue
         enterocyte_probabilities.append(probabilities[cell_type_names.index("ENTEROCYTE")])

@@ -12,8 +12,7 @@ from organoid_tracker.util import bits
 
 def get_menu_items(window: Window):
     return {
-        "File//Export-Export image//Projection-Max-intensity with cell type dots...": lambda: _show_colored_image(window),
-        #"File//Export-Export movie//Projection-Max-intensity with cell type dots...": lambda: _show_colored_movie(window)
+        "File//Export-Export image//Projection-Max-intensity with cell type dots...": lambda: _show_colored_image(window)
     }
 
 

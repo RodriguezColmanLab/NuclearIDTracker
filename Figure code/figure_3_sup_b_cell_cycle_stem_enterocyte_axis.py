@@ -1,5 +1,4 @@
-from collections import defaultdict
-from typing import Optional, Dict, Iterable, List, Any
+from typing import Optional, Dict, List, Any
 
 import numpy
 from matplotlib import pyplot as plt
@@ -9,9 +8,7 @@ import lib_figures
 from organoid_tracker.core import MPLColor
 from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
-from organoid_tracker.core.position_data import PositionData
 from organoid_tracker.imaging import list_io
-from organoid_tracker.position_analysis import position_markers
 
 _DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 _BIN_COUNT = 20

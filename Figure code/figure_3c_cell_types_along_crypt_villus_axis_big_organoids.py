@@ -3,13 +3,12 @@ from typing import List, Tuple, Iterable
 import numpy
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from numpy import ndarray
 
+import lib_figures
 from organoid_tracker.core.beacon_collection import BeaconCollection
 from organoid_tracker.core.spline import SplinePosition
 from organoid_tracker.imaging import list_io
-import lib_data
-import lib_figures
-from numpy import ndarray
 
 # _DATA_FILE = "../../Data/Tracking data as controls/Dataset.autlist"
 _DATA_FILE = "../../Data/Stem cell regeneration/Dataset - during DT treatment.autlist"

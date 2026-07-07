@@ -68,6 +68,7 @@ def _get_adata_predictions(experiments: Iterable[Experiment]) -> AnnData:
     organoid_list = list()
     stem_to_ec_score_list = list()
     time_h_list = list()
+    time_point_list = list()
     cell_names = list()
     # Collect position data for last 10 time points of each experiment
     for experiment in experiments:
@@ -84,6 +85,7 @@ def _get_adata_predictions(experiments: Iterable[Experiment]) -> AnnData:
             probabilities = position_data.get_position_data(position, "ct_probabilities")
             stem_to_enterocyte_score = lib_data.find_stem_to_ec_location(cell_types, probabilities)
             time_h = timings.get_time_h_since_start(position.time_point_number())
+            time_point_number = position.time_point_number()
 
             if position_data_array is not None and cell_type is not None and stem_to_enterocyte_score is not None:
                 data_array.append(position_data_array)
@@ -92,6 +94,7 @@ def _get_adata_predictions(experiments: Iterable[Experiment]) -> AnnData:
                 stem_to_ec_score_list.append(stem_to_enterocyte_score)
                 cell_names.append(_get_cell_key(experiment, position))
                 time_h_list.append(time_h)
+                time_point_list.append(time_point_number)
     data_array = numpy.array(data_array, dtype=numpy.float32)
 
     adata = AnnData(data_array)
@@ -101,6 +104,7 @@ def _get_adata_predictions(experiments: Iterable[Experiment]) -> AnnData:
     adata.obs["organoid"] = pandas.Categorical(organoid_list)
     adata.obs["stem_to_ec_score"] = stem_to_ec_score_list
     adata.obs["time_h"] = time_h_list
+    adata.obs["time_point"] = time_point_list
 
     return adata
 
@@ -175,10 +179,14 @@ def main():
         max_time_h = (time_id + 1) * _TIME_WINDOW_H
 
         ax_control.set_title(f"TA cells - Control - {min_time_h}-{max_time_h} h")
-        _put_on_lda(ax_control, lda, _filter_for_time(adata_control, min_time_h, max_time_h))
+        adata_time = _filter_for_time(adata_control, min_time_h, max_time_h)
+        _put_on_lda(ax_control, lda, adata_time)
+        print(f"Control: {len(adata_time)} observations across {len(adata_time.obs['time_point'].unique())} time points in time window {min_time_h}-{max_time_h} h")
 
         ax_regeneration.set_title(f"TA cells - Regeneration - {min_time_h}-{max_time_h} h")
-        _put_on_lda(ax_regeneration, lda, _filter_for_time(adata_regeneration, min_time_h, max_time_h))
+        adata_time = _filter_for_time(adata_regeneration, min_time_h, max_time_h)
+        _put_on_lda(ax_regeneration, lda, adata_time)
+        print(f"Regeneration: {len(adata_time)} observations across {len(adata_time.obs['time_point'].unique())} time points in time window {min_time_h}-{max_time_h} h")
 
     figure.tight_layout()
     plt.show()

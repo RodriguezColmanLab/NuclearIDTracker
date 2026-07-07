@@ -18,11 +18,15 @@ def main():
     # Remove cells that we cannot train on
     adata = adata[adata.obs["cell_type_training"] != "NONE"]
 
-    print("Number of cells:", adata.n_obs)
-
     # Do the LDA
     lda = sklearn.discriminant_analysis.LinearDiscriminantAnalysis()
     plot_coords = lda.fit(adata.X, adata.obs["cell_type_training"]).transform(adata.X)
+
+    # Print how many cells and organoids we have
+    n_cells = adata.n_obs
+    n_organoids = adata.obs["organoid"].nunique()
+    print(f"Number of cells: {n_cells}")
+    print(f"Number of organoids: {n_organoids}")
 
     # Plot the LDA
     figure = lib_figures.new_figure(size=(4.5, 3.5))
