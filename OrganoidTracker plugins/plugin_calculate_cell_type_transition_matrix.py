@@ -11,7 +11,7 @@ from organoid_tracker.position_analysis import position_markers
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Process-Cell types//Transitions-Save calculated cell type transition matrix...": lambda: _calculate_transition_matrix(window)
+        "Tools//Process-Cell types//Other-Save calculated cell type transition matrix...": lambda: _calculate_transition_matrix(window)
     }
 
 

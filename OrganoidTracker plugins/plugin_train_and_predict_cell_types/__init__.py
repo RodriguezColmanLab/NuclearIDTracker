@@ -6,8 +6,8 @@ from organoid_tracker.gui.window import Window
 def get_menu_items(window: Window) -> Dict[str, Any]:
     return {
         "View//Types-Cell type calculations (linear model only)...": lambda: _view_cell_type_parameters(window),
-        "Tools//Process-Cell types//3b. Predict cell types...": lambda: _create_prediction_script(window),
-        "Tools//Process-Cell types//3a. Train cell types...": lambda: _create_training_script(window)
+        "Tools//Process-Cell types//Predict cell types...": lambda: _create_prediction_script(window),
+        "Tools//Process-Cell types//Train cell types...": lambda: _create_training_script(window),
     }
 
 

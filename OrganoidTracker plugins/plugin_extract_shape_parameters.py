@@ -129,7 +129,7 @@ class _OurProperties:
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Process-Cell types//2. Extract shape parameters...": lambda: _extract_segmentation_parameters(window)
+        "Tools//Process-Cell types//Extract shape parameters...": lambda: _extract_segmentation_parameters(window)
     }
 
 

@@ -16,7 +16,7 @@ from organoid_tracker.position_analysis import position_markers
 
 def get_menu_items(window: Window):
     return {
-        "Tools//Process-Cell types//Transitions-Impute missing cell types from neighbors...": lambda: _impute_missing_cell_types(window)
+        "Tools//Process-Cell types//Other-Impute missing cell types from neighbors...": lambda: _impute_missing_cell_types(window)
     }
 
 
