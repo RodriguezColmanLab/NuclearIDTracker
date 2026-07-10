@@ -8,6 +8,7 @@ def get_menu_items(window: Window) -> Dict[str, Any]:
         "View//Types-Cell type calculations (linear model only)...": lambda: _view_cell_type_parameters(window),
         "Tools//Process-Cell types//Predict cell types...": lambda: _create_prediction_script(window),
         "Tools//Process-Cell types//Train cell types...": lambda: _create_training_script(window),
+        "Tools//Process-Cell types//Other-Set up cell type mapping...": lambda: _edit_cell_types(window)
     }
 
 
@@ -31,6 +32,11 @@ def _create_prediction_script(window: Window):
 def _create_training_script(window: Window):
     from . import train_on_organoidtracker_data
     train_on_organoidtracker_data.create_training_script(window)
+
+
+def _edit_cell_types(window: Window):
+    from . import edit_cell_type_mapping
+    edit_cell_type_mapping.show_popup(window)
 
 
 def _predict_types(args: List[str]):

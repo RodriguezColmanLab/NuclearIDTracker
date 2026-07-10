@@ -109,17 +109,20 @@ def run_training():
 
     for i, experiment in enumerate(list_io.load_experiment_list_file(parsed_config.tracking_input_file)):
         print("Loading", experiment.name)
-        position_data = experiment.position_data
+        cell_type_mapping = lib_data.get_cell_type_mapping(experiment)
+        positions = experiment.positions
 
         last_time_point_number = experiment.positions.last_time_point_number()
         time_points = [TimePoint(last_time_point_number), TimePoint(last_time_point_number - 5),
                        TimePoint(last_time_point_number - 10), TimePoint(last_time_point_number - 15)]
         for time_point in time_points:
-            for position in experiment.positions.of_time_point(time_point):
-                position_data_array = lib_data.get_data_array(position_data, position, input_names)
-                cell_type = position_data.get_position_data(position, "type")
-                cell_type_training = lib_data.convert_cell_type(cell_type)
-                if position_data_array is not None and cell_type_training != "NONE":
+            for position in positions.of_time_point(time_point):
+                position_data_array = lib_data.get_data_array(positions, position, input_names)
+                cell_type = positions.get_position_data(position, "type")
+                if not isinstance(cell_type, str):
+                    continue
+                cell_type_training = cell_type_mapping.get(cell_type)
+                if position_data_array is not None and cell_type_training is not None:
                     data_array.append(position_data_array)
                     cell_type_training_list.append(cell_type_training)
 

@@ -6,7 +6,9 @@ from anndata import AnnData
 import numpy
 from numpy import ndarray
 
+from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.position import Position
+from organoid_tracker.core.position_collection import PositionCollection
 from organoid_tracker.core.position_data import PositionData
 
 
@@ -20,31 +22,20 @@ def should_be_exponential(input_name: str) -> bool:
            or input_name.endswith("_local")
 
 
-def deduplicate_cells(adata: AnnData):
-    """De-duplicates the cells by only taking the ones with the highest time point per organoid. In this way, we have
-    less training data, but the data becomes suitable for statistical tests."""
-    full_mask = numpy.zeros(adata.n_obs, dtype=bool)
-    for organoid in list(adata.obs["organoid"].unique()):
-        mask = adata.obs["organoid"] == organoid
-        max_time_point = adata.obs[mask]["time_point"].max()
-        mask = mask & (adata.obs["time_point"] == max_time_point)
-        full_mask |= mask
-    return adata[full_mask].copy()
-
-def get_data_array(position_data: PositionData, position: Position, input_names: List[str]) -> Optional[ndarray]:
+def get_data_array(positions: PositionCollection, position: Position, input_names: List[str]) -> Optional[ndarray]:
     """Extract the data array from the given position."""
     array = numpy.empty(len(input_names), dtype=numpy.float32)
     for i, name in enumerate(input_names):
         value = None
         if name == "sphericity":
             # Special case, we need to calculate
-            volume = position_data.get_position_data(position, "volume_um3")
-            surface = position_data.get_position_data(position, "surface_um2")
+            volume = positions.get_position_data(position, "volume_um3")
+            surface = positions.get_position_data(position, "surface_um2")
             if volume is not None and surface is not None:
                 value = math.pi ** (1/3) * (6 * volume) ** (2/3) / surface
         else:
             # Otherwise, just look up
-            value = position_data.get_position_data(position, name)
+            value = positions.get_position_data(position, name)
 
         if value is None or value == 0:
             return None  # Abort, a value is missing
@@ -57,20 +48,35 @@ def get_data_array(position_data: PositionData, position: Position, input_names:
     return array
 
 
-def convert_cell_type(position_type: Optional[str]) -> str:
-    """Converts the cell type to one suitable for training. Returns "NONE" if no such type exists.
-    (We're using "NONE" instead of None because that works better with pandas.Categorial.)"""
-    if position_type is None:
-        return "NONE"
-    if position_type == "ENTEROCYTE":
-        return "ENTEROCYTE"
-    if position_type == "PANETH":
-        return "PANETH"
-    if position_type in {"STEM", "STEM_PUTATIVE"}:
-        return "STEM"
-    if position_type == "MATURE_GOBLET":
-        return "MATURE_GOBLET"
-    if position_type == "STEM_FETAL":
-        return "STEM_FETAL"
-    return "NONE"
+def get_cell_type_mapping(experiment: Experiment) -> dict[str, str]:
+    """Returns a mapping from cell types to their merged names."""
+    return_dict = dict()
+    for key, value in experiment.global_data.get_all_data().items():
+        if key.startswith("ct_mapping_") and isinstance(value, str):
+            cell_type_key = key[len("ct_mapping_"):]
+            return_dict[cell_type_key] = value
+
+    if len(return_dict) == 0:
+        # Nothing specified, return the legacy cell type mapping
+        return {
+            "ENTEROCYTE": "ENTEROCYTE",
+            "PANETH": "PANETH",
+            "STEM": "STEM",
+            "STEM_PUTATIVE": "STEM",
+            "MATURE_GOBLET": "MATURE_GOBLET"
+        }
+    return return_dict
+
+
+def set_cell_type_mapping(experiment: Experiment, mapping: dict[str, str]):
+    """Updates the cell type mapping in the experiment for training the model."""
+
+    # Remove existing mappings
+    for key in list(experiment.global_data.get_all_data().keys()):
+        if key.startswith("ct_mapping_"):
+            experiment.global_data.set_data(key, None)
+
+    # Set new mappings
+    for key, value in mapping.items():
+        experiment.global_data.set_data(f"ct_mapping_{key}", value)
 
