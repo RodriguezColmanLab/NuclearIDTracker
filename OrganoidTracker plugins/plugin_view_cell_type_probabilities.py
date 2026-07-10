@@ -25,7 +25,7 @@ class _CellTypeProbabilitiesVisualizer(ExitableImageVisualizer):
     """Shows the probabilities of a single cell type. Use the Cell type menu to select which cell type to visualize."""
 
     _cell_type: str | None = None
-    _cmap: Colormap = matplotlib.cm.get_cmap("magma")
+    _cmap: Colormap = matplotlib.colormaps.get_cmap("magma")
 
     def get_extra_menu_options(self) -> Dict[str, Any]:
         cell_types = self._experiment.global_data.get_data("ct_probabilities")
