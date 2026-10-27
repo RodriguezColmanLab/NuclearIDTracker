@@ -7,9 +7,10 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple
 
 import numpy
+import pandas
 import scipy.special
 from numpy import ndarray
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
@@ -61,9 +62,9 @@ class OurModel(ABC):
 
 class _KerasModel(OurModel):
     _input_output: ModelInputOutput
-    _keras_model: "tensorflow.keras.Model"
+    _keras_model: "keras.Model"
 
-    def __init__(self, input_output: ModelInputOutput, keras_model: "tensorflow.keras.Model"):
+    def __init__(self, input_output: ModelInputOutput, keras_model: "keras.Model"):
         self._input_output = input_output
         self._keras_model = keras_model
 
@@ -75,7 +76,7 @@ class _KerasModel(OurModel):
         return self._keras_model.evaluate(x_test, y_test, return_dict=True, verbose=0)
 
     def save(self, folder: str):
-        self._keras_model.save(folder)
+        self._keras_model.save(os.path.join(folder, "model.keras"))
         with open(os.path.join(folder, "settings.json"), "w") as handle:
             json.dump({
                 "type": "cell_type_from_manual_features",
@@ -172,6 +173,40 @@ class _RandomForestModel(OurModel):
         return self._random_forest.predict_proba(x_values)
 
 
+class _GradientBoostingModel(OurModel):
+    """Uses a gradient boosting model to classify cell types."""
+
+    _input_output: ModelInputOutput
+    _gradient_boosting: GradientBoostingClassifier
+
+    def __init__(self, input_output: ModelInputOutput, gradient_boosting: GradientBoostingClassifier):
+        self._input_output = input_output
+        self._gradient_boosting = gradient_boosting
+
+    def get_input_output(self) -> ModelInputOutput:
+        return self._input_output
+
+    def fit(self, x_train: ndarray, y_train: ndarray, class_weights: Dict[int, float], epochs: int = 1):
+        class_weights_array = numpy.zeros(y_train.shape[0], dtype=numpy.float64)
+        for index, output_class in enumerate(y_train):
+            class_weights_array[index] = class_weights[output_class]
+        self._gradient_boosting.fit(x_train, y_train, sample_weight=class_weights_array)
+
+    def evaluate(self, x_test: ndarray, y_test: ndarray) -> Dict[str, float]:
+        return {
+            "accuracy": self._gradient_boosting.score(x_test, y_test)
+        }
+
+    def save(self, folder: str):
+        pickle_file = os.path.join(folder, "gradient_boosting_pickled.sav")
+        with open(pickle_file, "wb") as handle:
+            pickle.dump(self._input_output.to_dict(), handle)
+            pickle.dump(self._gradient_boosting, handle)
+
+    def predict(self, x_values: ndarray) -> ndarray:
+        return self._gradient_boosting.predict_proba(x_values)
+
+
 def load_model(folder: str) -> OurModel:
     # Needed to load pickle files
     dir_name = os.path.dirname(__file__)
@@ -193,6 +228,13 @@ def load_model(folder: str) -> OurModel:
             random_forest = pickle.load(handle)
         return _RandomForestModel(input_output, random_forest)
 
+    pickle_file_for_gradient_boosting = os.path.join(folder, "gradient_boosting_pickled.sav")
+    if os.path.exists(pickle_file_for_gradient_boosting):
+        with open(pickle_file_for_gradient_boosting, "rb") as handle:
+            input_output = ModelInputOutput.from_dict(pickle.load(handle))
+            gradient_boosting = pickle.load(handle)
+        return _GradientBoostingModel(input_output, gradient_boosting)
+
     if os.path.exists(os.path.join(folder, "settings.json")):
         import tensorflow
         keras_model = tensorflow.keras.models.load_model(folder)
@@ -205,9 +247,31 @@ def load_model(folder: str) -> OurModel:
     raise ValueError(f"No model found in {folder}.")
 
 
+
+def build_gradient_boosting(input_output: ModelInputOutput, n_estimators: int = 100) -> OurModel:
+    """Builds a gradient boosting model. It will initially be untrained, call OurModel.fit to train it."""
+    return _GradientBoostingModel(input_output, GradientBoostingClassifier(n_estimators=n_estimators, random_state=1))
+
+
 def build_random_forest(input_output: ModelInputOutput, tree_count: int = 100) -> OurModel:
     """Builds a random forest model. It will initially be untrained, call OurModel.fit to train it."""
-    return _RandomForestModel(input_output, RandomForestClassifier(max_features="sqrt", n_estimators=tree_count))
+    return _RandomForestModel(input_output, RandomForestClassifier(max_features="sqrt", n_estimators=tree_count, random_state=1))
+
+
+def calculate_class_weights(cell_types: pandas.Series) -> Dict[int, float]:
+    counts_by_type = dict()
+
+    array = cell_types.cat.codes.array
+    for i in numpy.unique(array):
+        count = numpy.count_nonzero(array == i)
+        counts_by_type[i] = count
+
+    max_count = max(counts_by_type.values())
+    weights_by_type = dict()
+    for i, count in counts_by_type.items():
+        weights_by_type[i] = min(max_count / count, 2)
+
+    return weights_by_type
 
 
 def build_shallow_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons: int) -> OurModel:
@@ -220,17 +284,47 @@ def build_shallow_model(input_output: ModelInputOutput, x_train: ndarray, hidden
         logistic_regression = LogisticRegression(max_iter=1000)
         return _LinearModel(input_output, scaler, logistic_regression)
 
-    # Build a shallow Tensorflow model
-    import tensorflow
-    normalizer = tensorflow.keras.layers.Normalization(axis=-1)
+    # Build a shallow Keras model
+    os.environ["KERAS_BACKEND"] = "torch"
+    import keras
+    normalizer = keras.layers.Normalization(axis=-1)
     normalizer.adapt(x_train)
 
-    model = tensorflow.keras.models.Sequential([
+    model = keras.models.Sequential([
         normalizer,
-        tensorflow.keras.layers.Dense(hidden_neurons, activation="relu"),
-        tensorflow.keras.layers.Dense(len(input_output.cell_type_mapping))
+        keras.layers.Dense(hidden_neurons, activation="relu"),
+        keras.layers.Dense(len(input_output.cell_type_mapping))
     ])
-    loss_fn = tensorflow.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    model.compile(optimizer='adam',
+                  loss=loss_fn,
+                  metrics=['accuracy'])
+    return _KerasModel(input_output, model)
+
+
+def build_deep_model(input_output: ModelInputOutput, x_train: ndarray, hidden_neurons: int, hidden_layers: int) -> OurModel:
+    """Builds a deep model, so with multiple hidden layers. If hidden_neurons==0, then we have no hidden layer at all, and
+    instead we'll have a linear model."""
+    if hidden_neurons == 0:
+        # Just use a linear classifier, solved analytically
+        scaler = StandardScaler()
+        scaler.fit(x_train)
+        logistic_regression = LogisticRegression(max_iter=1000)
+        return _LinearModel(input_output, scaler, logistic_regression)
+
+    # Build a deep Keras model
+    os.environ["KERAS_BACKEND"] = "torch"
+    import keras
+    normalizer = keras.layers.Normalization(axis=-1)
+    normalizer.adapt(x_train)
+
+    layers = [normalizer]
+    for _ in range(hidden_layers):
+        layers.append(keras.layers.Dense(hidden_neurons, activation="relu"))
+    layers.append(keras.layers.Dense(len(input_output.cell_type_mapping)))
+
+    model = keras.models.Sequential(layers)
+    loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
     model.compile(optimizer='adam',
                   loss=loss_fn,
                   metrics=['accuracy'])

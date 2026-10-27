@@ -1,4 +1,5 @@
-from typing import Dict, List, Optional, Tuple, NamedTuple
+from functools import partial
+from typing import Dict, List, Optional, Tuple, NamedTuple, Callable
 
 import numpy
 import pandas
@@ -7,14 +8,17 @@ import scanpy.preprocessing
 import sklearn.metrics
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.colors import LinearSegmentedColormap
 from numpy import ndarray
 from sklearn.model_selection import KFold
-from lib_models import build_shallow_model, ModelInputOutput
+from lib_models import ModelInputOutput, OurModel
+import lib_models
 import lib_figures
 
 _NUM_FOLDS = 5
 _TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
 
+_COLORMAP = LinearSegmentedColormap.from_list("red_white", ["#F9EDF5", "#b2007b"], N=256)
 
 class _ConfusionMatrix(NamedTuple):
     cell_types: List[str]
@@ -24,22 +28,6 @@ class _ConfusionMatrix(NamedTuple):
         correct_predictions = numpy.diagonal(self.confusion_matrix).sum()
         total_predictions = self.confusion_matrix.sum()
         return correct_predictions / total_predictions if total_predictions > 0 else 0.0
-
-
-def _calculate_class_weights(cell_types: pandas.Series) -> Dict[int, float]:
-    counts_by_type = dict()
-
-    array = cell_types.cat.codes.array
-    for i in numpy.unique(array):
-        count = numpy.count_nonzero(array == i)
-        counts_by_type[i] = count
-
-    max_count = max(counts_by_type.values())
-    weights_by_type = dict()
-    for i, count in counts_by_type.items():
-        weights_by_type[i] = min(max_count / count, 2)
-
-    return weights_by_type
 
 
 class _SingleParameterResults:
@@ -57,50 +45,41 @@ class _SingleParameterResults:
                 self.confusion_matrix += result.confusion_matrix
 
 
+
+def _set_title(ax: Axes, title: str):
+    """Sets the title of the axis, preserving any existing title as an underline."""
+    existing_title = ax.get_title()
+    if existing_title:
+        ax.set_title(f"{title}\n{existing_title}")
+    else:
+        ax.set_title(title)
+
+
 def main():
-    comparison = _evaluate_model()
-    _show_bar_plot(comparison)
-    _show_confusion_matrix(comparison)
+    comparison_shallow_neural_network = _evaluate_model(lambda input_output, x_values: lib_models.build_shallow_model(input_output, x_values, hidden_neurons=1000))
+    comparison_random_forest = _evaluate_model(lambda input_output, _: lib_models.build_random_forest(input_output))
+    comparison_gradient_boosting = _evaluate_model(lambda input_output, _: lib_models.build_gradient_boosting(input_output))
 
+    figure = lib_figures.new_figure(size=(9, 3))
+    ax_shallow_neural_network, ax_random_forest, ax_gradient_boosting = figure.subplots(1, 3, sharey=True)
 
-def _show_bar_plot(comparison: _ConfusionMatrix):
-    cell_types = comparison.cell_types
-    confusion_matrix = comparison.confusion_matrix
-    fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
+    _show_confusion_matrix(ax_shallow_neural_network, comparison_shallow_neural_network)
+    _set_title(ax_shallow_neural_network, "Hidden layer")
 
-    space_for_bars = 2.75
+    _show_confusion_matrix(ax_random_forest, comparison_random_forest)
+    _set_title(ax_random_forest, "Random forest")
 
-    figure = lib_figures.new_figure()
-    ax: Axes = figure.gca()
-    for i, cell_type_immunostaining in enumerate(cell_types):
-        amount_correct_of_type = confusion_matrix[i, i]
-        amount_incorrect_of_type = numpy.sum(confusion_matrix[i]) - amount_correct_of_type
-        percentage_correct_of_type = confusion_matrix[i, i] / numpy.sum(confusion_matrix[i]) * 100
-        x_values = [i * space_for_bars + j for j in [0, 1]]
-        y_values = [percentage_correct_of_type, 100 - percentage_correct_of_type]
-        ax.bar(x_values, y_values, color=["#85ff8e", "#a214dd"],
-               width=1, align="edge")
-        ax.text(x_values[0] + 0.5, y_values[0] - 1, str(amount_correct_of_type), ha="center", va="top")
-        ax.text(x_values[1] + 0.5, y_values[1] + 1, str(amount_incorrect_of_type), ha="center", va="bottom")
-
-    ax.set_xticks([space_for_bars * i + 1 for i in range(len(cell_types))])
-    ax.set_xticklabels([lib_figures.style_cell_type_name(name) for name in cell_types])
-    ax.set_xlabel("Cell type from immunostaining")
-    ax.set_ylabel("Predicted types (%)")
-    ax.set_title(f"Accuracy: {fraction_correct * 100:.1f}%")
-    ax.set_ylim(0, 100)
-
+    _show_confusion_matrix(ax_gradient_boosting, comparison_gradient_boosting)
+    _set_title(ax_gradient_boosting, "Gradient boosting")
+    figure.tight_layout()
     plt.show()
 
 
-def _show_confusion_matrix(comparison: _ConfusionMatrix):
-    figure = lib_figures.new_figure()
-    ax = figure.gca()
-
-    ax.set_title(f"Accuracy: {comparison.accuracy() * 100:.2f}%")
+def _show_confusion_matrix(ax: Axes, comparison: _ConfusionMatrix):
+    ax.set_title(f"Accuracy: {comparison.accuracy() * 100:.1f}%")
     confusion_matrix_scaled = comparison.confusion_matrix.astype(float)
     confusion_matrix_scaled /= confusion_matrix_scaled.sum(axis=1, keepdims=True)
-    ax.imshow(confusion_matrix_scaled, cmap="Blues")
+    ax.imshow(confusion_matrix_scaled, cmap=_COLORMAP)
     ax.set_xticks(range(len(comparison.cell_types)))
     ax.set_yticks(range(len(comparison.cell_types)))
     ax.set_xticklabels([lib_figures.style_cell_type_name(cell_type) for cell_type in comparison.cell_types],
@@ -116,11 +95,8 @@ def _show_confusion_matrix(comparison: _ConfusionMatrix):
             color = "white" if confusion_matrix_scaled[i, j] > 0.5 else "black"
             ax.text(j, i, str(count), ha="center", va="center", color=color)
 
-    figure.tight_layout()
-    plt.show()
 
-
-def _evaluate_model() -> _ConfusionMatrix:
+def _evaluate_model(model_creator: Callable[[ModelInputOutput, ndarray], OurModel]) -> _ConfusionMatrix:
     adata = scanpy.read_h5ad(_TRAINING_DATA_FILE)
     adata = adata[adata.obs["cell_type_training"] != "NONE"]  # These ones have an unclear training cell type
     cell_types = adata.obs["cell_type_training"].array.categories
@@ -129,13 +105,13 @@ def _evaluate_model() -> _ConfusionMatrix:
     y_values = numpy.array(adata.obs["cell_type_training"].cat.codes.array)
     random = numpy.random.RandomState(1234)
     kfold = KFold(n_splits=_NUM_FOLDS, shuffle=True, random_state=random)
-    weights_train = _calculate_class_weights(adata.obs["cell_type_training"])
+    weights_train = lib_models.calculate_class_weights(adata.obs["cell_type_training"])
     results = _SingleParameterResults()
     for train_indices, test_indices in kfold.split(x_values, y_values):
         # Build and train the model
-        model = build_shallow_model(input_output, x_values[train_indices], hidden_neurons=0)
+        model = model_creator(input_output, x_values[train_indices, :])
         model.fit(x_values[train_indices, :], y_values[train_indices],
-                  class_weights=weights_train)
+                  class_weights=weights_train, epochs=5)
 
         # Evaluate the model
         predictions = model.predict(x_values[test_indices])

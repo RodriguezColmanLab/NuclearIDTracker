@@ -86,7 +86,7 @@ def new_figure(size: Tuple[float, float] = (4, 3), dpi: int = 300) -> Figure:
 
 def style_cell_type_name(cell_type_name: str) -> str:
     return (cell_type_name.lower().replace("mature_", "").replace("_", " ")
-            .replace("stem", "crypt").replace("paneth", "Paneth"))
+            .replace("paneth", "Paneth"))
 
 
 def get_mixed_cell_type_color(cell_type_names: List[str], cell_type_probabilities: List[float]) -> Tuple[

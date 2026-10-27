@@ -50,11 +50,13 @@ def _predict_organoid(experiment: Experiment, model: lib_models.OurModel):
 
     # Store the predicted cell types
     experiment.global_data.set_data("ct_probabilities", cell_types)
+    store_cell_types = True or not experiment.positions.has_position_data_with_name("type")
     for position, probability_by_cell_type in zip(positions_corresponding_to_data_array, probabilities):
-        experiment.position_data.set_position_data(position, "ct_probabilities",
+        experiment.positions.set_position_data(position, "ct_probabilities",
                                                    [float(prob) for prob in probability_by_cell_type])
         cell_type = cell_types[numpy.argmax(probability_by_cell_type)]
-        #position_markers.set_position_type(experiment.position_data, position, cell_type)
+        if store_cell_types:
+            position_markers.set_position_type(experiment.positions, position, cell_type)
 
 
 def _parse_config(config: ConfigFile) -> _ParsedConfig:

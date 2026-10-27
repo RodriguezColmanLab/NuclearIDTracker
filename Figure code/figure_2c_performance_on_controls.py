@@ -3,6 +3,7 @@ from typing import List
 import numpy
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.colors import LinearSegmentedColormap
 
 from organoid_tracker.core import TimePoint
 from organoid_tracker.core.experiment import Experiment
@@ -14,6 +15,9 @@ import lib_figures
 
 _DATA_FILE_STAINING = "../../Data/Training data.autlist"
 _DATA_FILE_PREDICTED = "../../Data/Tracking data as controls/Dataset - full overweekend.autlist"
+
+
+_COLORMAP = LinearSegmentedColormap.from_list("blue_white", ["#ffffff", "#2d2db2"])
 
 
 class _ConfusionMatrix:
@@ -99,7 +103,7 @@ def _show_confusion_matrix(comparison: _ConfusionMatrix):
     ax.set_title(f"Accuracy: {comparison.accuracy() * 100:.2f}%")
     confusion_matrix_scaled = comparison.confusion_matrix.astype(float)
     confusion_matrix_scaled /= confusion_matrix_scaled.sum(axis=1, keepdims=True)
-    ax.imshow(confusion_matrix_scaled, cmap="Blues")
+    ax.imshow(confusion_matrix_scaled, cmap=_COLORMAP)
     ax.set_xticks(range(len(comparison.cell_types)))
     ax.set_yticks(range(len(comparison.cell_types)))
     ax.set_xticklabels([lib_figures.style_cell_type_name(cell_type) for cell_type in comparison.cell_types], rotation=-45, ha="left")

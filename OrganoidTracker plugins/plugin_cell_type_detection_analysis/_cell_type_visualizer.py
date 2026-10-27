@@ -10,7 +10,6 @@ from organoid_tracker.core.experiment import Experiment
 from organoid_tracker.core.links import LinkingTrack
 from organoid_tracker.core.position import Position
 from organoid_tracker.gui import dialog
-from organoid_tracker.util.moving_average import MovingAverage
 from organoid_tracker.visualizer.exitable_image_visualizer import ExitableImageVisualizer
 
 _WINDOW_WIDTH_H = 4

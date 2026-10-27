@@ -75,7 +75,7 @@ class _OurProperties:
         self._positions_zyx_um[label, 1] = y_um
         self._positions_zyx_um[label, 2] = z_um
 
-    def add(self, label: int, param: _SingleCellParam, value: float):
+    def add_param(self, label: int, param: _SingleCellParam, value: float):
         self._values[label, param.value - 1] = value
 
     def get(self, label: int, param: _SingleCellParam) -> float:
@@ -85,7 +85,7 @@ class _OurProperties:
         self._calculate_neighborhood()
 
         for label, position in label_to_position.items():
-            position_data.add(position)
+            position_data.add(position)  # Add the position itself first
             position_data.set_position_data(position, "neighbor_distance_median_um",
                                             float(self._neighbor_distances_and_variation[label, 0]))
             position_data.set_position_data(position, "neighbor_distance_mean_um",
@@ -295,10 +295,12 @@ def _measure_shape(properties_by_label: Dict[int, "skimage.measure._regionprops.
     median_intensity = numpy.median([properties.intensity_mean for properties in properties_by_label.values()])
     lowest_z = min(properties.centroid[0] for properties in properties_by_label.values())
 
+    opening_mask = 3 if resolution.pixel_size_x_um > 0.5 else 5  # At low resolutions, make the mask for opening smaller
+
     storage = _OurProperties(len(properties_by_label))
     for label, properties in properties_by_label.items():
         padded = numpy.pad(properties.image_filled, 2, mode='constant', constant_values=0)
-        padded = scipy.ndimage.binary_opening(padded, structure=numpy.ones((3, 5, 5)))
+        padded = scipy.ndimage.binary_opening(padded, structure=numpy.ones((3, opening_mask, opening_mask)))
         volume_um3 = numpy.sum(padded) * pixel_volume_um3
         if volume_um3 == 0:
             continue  # Nothing was left after opening
@@ -325,19 +327,19 @@ def _measure_shape(properties_by_label: Dict[int, "skimage.measure._regionprops.
 
         storage.add_position(label, x * resolution.pixel_size_x_um, y * resolution.pixel_size_y_um,
                              z * resolution.pixel_size_z_um)
-        storage.add(label, _SingleCellParam.solidity, numpy.sum(padded) / numpy.sum(convex_hull_image))
-        storage.add(label, _SingleCellParam.volume_um3, volume_um3)
-        storage.add(label, _SingleCellParam.solidity, solidity)
-        storage.add(label, _SingleCellParam.surface_um2, surface_um2)
-        storage.add(label, _SingleCellParam.feret_diameter_max_um, feret_diameter_max_um)
-        storage.add(label, _SingleCellParam.intensity_factor, intensity_factor)
-        storage.add(label, _SingleCellParam.ellipticity, ellipticity)
-        storage.add(label, _SingleCellParam.organoid_relative_z_um, organoid_relative_z_um)
-        storage.add(label, _SingleCellParam.extent, properties.extent)
-        storage.add(label, _SingleCellParam.minor_axis_length_um, axis_minor_length * resolution.pixel_size_x_um)
-        storage.add(label, _SingleCellParam.intermediate_axis_length_um,
-                    axis_intermediate_length * resolution.pixel_size_x_um)
-        storage.add(label, _SingleCellParam.major_axis_length_um, axis_major_length * resolution.pixel_size_x_um)
+        storage.add_param(label, _SingleCellParam.solidity, numpy.sum(padded) / numpy.sum(convex_hull_image))
+        storage.add_param(label, _SingleCellParam.volume_um3, volume_um3)
+        storage.add_param(label, _SingleCellParam.solidity, solidity)
+        storage.add_param(label, _SingleCellParam.surface_um2, surface_um2)
+        storage.add_param(label, _SingleCellParam.feret_diameter_max_um, feret_diameter_max_um)
+        storage.add_param(label, _SingleCellParam.intensity_factor, intensity_factor)
+        storage.add_param(label, _SingleCellParam.ellipticity, ellipticity)
+        storage.add_param(label, _SingleCellParam.organoid_relative_z_um, organoid_relative_z_um)
+        storage.add_param(label, _SingleCellParam.extent, properties.extent)
+        storage.add_param(label, _SingleCellParam.minor_axis_length_um, axis_minor_length * resolution.pixel_size_x_um)
+        storage.add_param(label, _SingleCellParam.intermediate_axis_length_um,
+                          axis_intermediate_length * resolution.pixel_size_x_um)
+        storage.add_param(label, _SingleCellParam.major_axis_length_um, axis_major_length * resolution.pixel_size_x_um)
 
     return storage
 

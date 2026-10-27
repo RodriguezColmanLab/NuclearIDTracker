@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, NamedTuple
 
 import numpy
 import pandas
@@ -7,6 +7,7 @@ import scanpy.preprocessing
 import sklearn.metrics
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.colors import LinearSegmentedColormap
 from numpy import ndarray
 from sklearn.model_selection import KFold
 from lib_models import build_shallow_model, ModelInputOutput
@@ -14,6 +15,18 @@ import lib_figures
 
 _NUM_FOLDS = 5
 _TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
+
+_COLORMAP = LinearSegmentedColormap.from_list("blue_white", ["#ffffff", "#2d2db2"])
+
+
+class _ConfusionMatrix(NamedTuple):
+    cell_types: List[str]
+    confusion_matrix: ndarray
+
+    def accuracy(self) -> float:
+        correct_predictions = numpy.diagonal(self.confusion_matrix).sum()
+        total_predictions = self.confusion_matrix.sum()
+        return correct_predictions / total_predictions if total_predictions > 0 else 0.0
 
 
 def _calculate_class_weights(cell_types: pandas.Series) -> Dict[int, float]:
@@ -48,36 +61,69 @@ class _SingleParameterResults:
 
 
 def main():
-    cell_types, results = _evaluate_model()
-    confusion_matrix = results.confusion_matrix
+    comparison = _evaluate_model()
+    _show_bar_plot(comparison)
+    _show_confusion_matrix(comparison)
+
+
+def _show_bar_plot(comparison: _ConfusionMatrix):
+    cell_types = comparison.cell_types
+    confusion_matrix = comparison.confusion_matrix
     fraction_correct = numpy.diagonal(confusion_matrix).sum() / confusion_matrix.sum()
-    space_for_bars = 3
+
+    space_for_bars = 2.75
 
     figure = lib_figures.new_figure()
     ax: Axes = figure.gca()
     for i, cell_type_immunostaining in enumerate(cell_types):
-        true_positives = confusion_matrix[i, i]
-        false_negatives = confusion_matrix[:, i].sum() - true_positives
-        y_values = [true_positives, false_negatives]
-        y_values = [value / sum(y_values) * 100 for value in y_values]
-        ax.bar(i * space_for_bars + 1, y_values[0], color=lib_figures.CELL_TYPE_PALETTE["STEM"], label="True positives" if i == 0 else None)
-        ax.text(i * space_for_bars + 1, y_values[0] + 1, str(true_positives), ha="center", va="bottom")
-        ax.bar(i * space_for_bars + 2, y_values[1], color="#8e44ad", label="False negatives" if i == 0 else None)
-        ax.text(i * space_for_bars + 2, y_values[1] + 1, str(false_negatives), ha="center", va="bottom")
+        amount_correct_of_type = confusion_matrix[i, i]
+        amount_incorrect_of_type = numpy.sum(confusion_matrix[i]) - amount_correct_of_type
+        percentage_correct_of_type = confusion_matrix[i, i] / numpy.sum(confusion_matrix[i]) * 100
+        x_values = [i * space_for_bars + j for j in [0, 1]]
+        y_values = [percentage_correct_of_type, 100 - percentage_correct_of_type]
+        ax.bar(x_values, y_values, color=["#85ff8e", "#a214dd"],
+               width=1, align="edge")
+        ax.text(x_values[0] + 0.5, y_values[0] - 1, str(amount_correct_of_type), ha="center", va="top")
+        ax.text(x_values[1] + 0.5, y_values[1] + 1, str(amount_incorrect_of_type), ha="center", va="bottom")
 
-    ax.set_xticks([space_for_bars * i + 1.5 for i in range(len(cell_types))])
+    ax.set_xticks([space_for_bars * i + 1 for i in range(len(cell_types))])
     ax.set_xticklabels([lib_figures.style_cell_type_name(name) for name in cell_types])
     ax.set_xlabel("Cell type from immunostaining")
-    ax.set_ylabel("Cells (%)")
+    ax.set_ylabel("Predicted types (%)")
     ax.set_title(f"Accuracy: {fraction_correct * 100:.1f}%")
     ax.set_ylim(0, 100)
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    plt.show()
+
+
+def _show_confusion_matrix(comparison: _ConfusionMatrix):
+    figure = lib_figures.new_figure()
+    ax = figure.gca()
+
+    ax.set_title(f"Accuracy: {comparison.accuracy() * 100:.1f}%")
+    confusion_matrix_scaled = comparison.confusion_matrix.astype(float)
+    confusion_matrix_scaled /= confusion_matrix_scaled.sum(axis=1, keepdims=True)
+    ax.imshow(confusion_matrix_scaled, cmap=_COLORMAP)
+    ax.set_xticks(range(len(comparison.cell_types)))
+    ax.set_yticks(range(len(comparison.cell_types)))
+    ax.set_xticklabels([lib_figures.style_cell_type_name(cell_type) for cell_type in comparison.cell_types],
+                       rotation=-45, ha="left")
+    ax.set_yticklabels([lib_figures.style_cell_type_name(cell_type) for cell_type in comparison.cell_types])
+    ax.set_xlabel("Predicted cell type")
+    ax.set_ylabel("Cell type (immunostaining)")
+
+    # Add counts to all cells
+    for i in range(len(comparison.cell_types)):
+        for j in range(len(comparison.cell_types)):
+            count = comparison.confusion_matrix[i, j]
+            color = "white" if confusion_matrix_scaled[i, j] > 0.5 else "black"
+            ax.text(j, i, str(count), ha="center", va="center", color=color)
 
     figure.tight_layout()
     plt.show()
 
 
-def _evaluate_model() -> Tuple[List[str], _SingleParameterResults]:
+def _evaluate_model() -> _ConfusionMatrix:
     adata = scanpy.read_h5ad(_TRAINING_DATA_FILE)
     adata = adata[adata.obs["cell_type_training"] != "NONE"]  # These ones have an unclear training cell type
     cell_types = adata.obs["cell_type_training"].array.categories
@@ -102,7 +148,7 @@ def _evaluate_model() -> Tuple[List[str], _SingleParameterResults]:
             answers, numpy.argmax(predictions, axis=1), labels=numpy.arange(len(cell_types)))
 
         results.append(_SingleParameterResults(confusion_matrix=confusion_matrix))
-    return cell_types, results
+    return _ConfusionMatrix(cell_types=cell_types, confusion_matrix=results.confusion_matrix)
 
 
 if __name__ == "__main__":

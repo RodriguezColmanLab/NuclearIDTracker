@@ -7,11 +7,11 @@ import numpy
 import pandas
 import scanpy
 import scanpy.preprocessing
-import tensorflow
+import sklearn
 from matplotlib.axes import Axes
 from numpy import ndarray
 from sklearn.model_selection import KFold
-
+import lib_models
 from lib_models import build_shallow_model, ModelInputOutput
 
 _NUM_FOLDS = 5
@@ -20,21 +20,6 @@ _EPOCHS = [1, 2, 3, 4, 5, 6]
 _OUTPUT_FOLDER = "../../Data/Models"
 _TRAINING_DATA_FILE = "../../Data/all_data.h5ad"
 
-
-def _calculate_class_weights(cell_types: pandas.Series) -> Dict[int, float]:
-    counts_by_type = dict()
-
-    array = cell_types.cat.codes.array
-    for i in numpy.unique(array):
-        count = numpy.count_nonzero(array == i)
-        counts_by_type[i] = count
-
-    max_count = max(counts_by_type.values())
-    weights_by_type = dict()
-    for i, count in counts_by_type.items():
-        weights_by_type[i] = min(max_count / count, 2)
-
-    return weights_by_type
 
 
 class _SingleParameterResults:
@@ -79,8 +64,6 @@ class _ResultContainer:
 
 
 def main():
-    tensorflow.config.experimental.set_memory_growth(tensorflow.config.list_physical_devices('GPU')[0], True)
-
     results = _ResultContainer()
 
     adata = scanpy.read_h5ad(_TRAINING_DATA_FILE)
@@ -97,7 +80,7 @@ def main():
                 continue  # Doesn't make sense to test this, as for linear models we don't use epochs
             print(f"Working on epochs {epochs}, neurons {hidden_neurons}...")
             kfold = KFold(n_splits=_NUM_FOLDS, shuffle=True)
-            weights_train = _calculate_class_weights(adata.obs["cell_type"])
+            weights_train = lib_models.calculate_class_weights(adata.obs["cell_type"])
             saved_a_model = False
             for train_indices, test_indices in kfold.split(x_values, y_values):
                 # Build and train a neural network
@@ -107,7 +90,7 @@ def main():
 
                 # Evaluate the model
                 scores = model.evaluate(x_values[test_indices], y_values[test_indices])
-                confusion_matrix = numpy.array(tensorflow.math.confusion_matrix(
+                confusion_matrix = numpy.array(sklearn.metrics.confusion_matrix(
                     y_values[test_indices],
                     numpy.argmax(model.predict(x_values[test_indices]), axis=1)))
 

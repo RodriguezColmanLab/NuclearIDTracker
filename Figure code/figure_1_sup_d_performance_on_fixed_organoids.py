@@ -14,6 +14,8 @@ _DATA_FILE_OLFM4_STAINING_AND_PREDICTIONS = "../../Data/Fixed cells control/Olfm
 _DATA_FILE_KRT20_LYZ_PREDICTIONS = "../../Data/Testing data - predictions - treatments - fixed.autlist"
 _DATA_FILE_KRT20_LYZ_STAINING = "../../Data/Immunostaining conditions.autlist"
 
+_COLORMAP = matplotlib.colors.LinearSegmentedColormap.from_list("fixed", ["#ffffff", "#008b8b"])
+
 
 class _ConfusionMatrix:
     cell_types: List[str]
@@ -122,7 +124,7 @@ def _show_confusion_matrix(comparison: _ConfusionMatrix):
     ax.set_title(f"Accuracy: {comparison.accuracy() * 100:.2f}%")
     confusion_matrix_scaled = comparison.confusion_matrix.astype(float)
     confusion_matrix_scaled /= confusion_matrix_scaled.sum(axis=1, keepdims=True)
-    ax.imshow(confusion_matrix_scaled, cmap="Blues")
+    ax.imshow(confusion_matrix_scaled, cmap=_COLORMAP)
     ax.set_xticks(range(len(comparison.cell_types)))
     ax.set_yticks(range(len(comparison.cell_types)))
     ax.set_xticklabels([lib_figures.style_cell_type_name(cell_type) for cell_type in comparison.cell_types],
