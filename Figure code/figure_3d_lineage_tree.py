@@ -15,13 +15,12 @@ from organoid_tracker.linking_analysis.lineage_drawing import LineageDrawing
 
 _DATA_FILE = "../../Data/Predicted data.autlist"
 _EXPERIMENT_NAME = "x20190926pos01"
-_PLOTTED_LINEAGE_TREES = [Position(192.02, 299.39, 5, time_point_number=1),  # Both absorptive and secretory cells
-                          Position(145.97, 333.90, 16, time_point_number=1)]
+_PLOTTED_LINEAGE_TREES = [Position(192.02, 299.39, 5, time_point_number=0)]
 
 # Will have a small number at the bottom of the lineage tree
-_ANNOTATED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=331),
-                        Position(125.56, 294.27, 12.00, time_point_number=331),
-                        Position(234.63, 343.08, 8.00, time_point_number=331)]
+_ANNOTATED_POSITIONS = [Position(89.73, 331.37, 5.00, time_point_number=330),
+                        Position(125.56, 294.27, 12.00, time_point_number=330),
+                        Position(234.63, 343.08, 8.00, time_point_number=330)]
 
 
 def main():
